@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ampereVisualizer (realtime)</title>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root {
+    --ch0-color: #1f77b4;
+    --ch1-color: #ff7f0e;
+    --bg: #f5f6f8;
+    --panel-bg: #ffffff;
+    --border: #d8dbe0;
+    --text: #222;
+    --muted: #666;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .app-title {
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .panel h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  #sourceControls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px;
+  }
+  #sourceControls .status { font-weight: 600; }
+  #sourceControls .status.ok { color: #2e7d32; }
+  #sourceControls .status.error { color: #b3261e; }
+  #sourceControls .muted-inline { color: var(--muted); font-size: 12px; }
+
+  #fileInfo {
+    margin-top: 14px;
+    font-size: 13px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+  #fileInfo table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #fileInfo td, #fileInfo th {
+    text-align: left;
+    padding: 3px 6px;
+    border-bottom: 1px solid #eee;
+  }
+  #fileInfo thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+  }
+  #fileSummary {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    font-size: 13px;
+  }
+  #fileSummary .badge {
+    background: #eef1f5;
+    border-radius: 4px;
+    padding: 4px 10px;
+  }
+  #fileSummary .badge.warn {
+    background: #fdecea;
+    color: #b3261e;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+  }
+  button:hover { background: #f0f1f3; }
+  button.danger {
+    color: #b3261e;
+    border-color: #f2c6c2;
+  }
+  button.danger:hover { background: #fdecea; }
+
+  /* stats */
+  #statsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .ch-card {
+    border-radius: 6px;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+  }
+  .ch-card.ch0 { border-left: 4px solid var(--ch0-color); }
+  .ch-card.ch1 { border-left: 4px solid var(--ch1-color); }
+  .ch-card h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+  .ch-card .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 2px 0;
+  }
+  .ch-card .stat-row span:first-child { color: var(--muted); }
+  .ch-card .stat-row span:last-child { font-variant-numeric: tabular-nums; }
+  #statsRange {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  #rangeControls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+  }
+  #rangeControls label {
+    font-size: 12px;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  #rangeControls input[type="datetime-local"] {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  #rangeControls .preset-group {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  #rangeControls .preset-group button {
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+
+  #chart {
+    width: 100%;
+    height: 480px;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+    font-size: 14px;
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="app-title">電流情報可視化(リアルタイム版)</div>
+
+<main>
+
+  <section class="panel">
+    <h2>データソース(自動更新)</h2>
+    <div id="sourceControls">
+      <span id="statusText" class="status">接続中…</span>
+      <span id="lastUpdated" class="muted-inline"></span>
+      <label><input type="checkbox" id="liveFollowChk" checked> ライブ追従</label>
+      <label>更新間隔
+        <select id="intervalSel">
+          <option value="5000">5秒</option>
+          <option value="10000" selected>10秒</option>
+          <option value="30000">30秒</option>
+          <option value="60000">60秒</option>
+        </select>
+      </label>
+    </div>
+    <div id="fileSummary" class="hidden">
+      <span class="badge" id="badgeFiles">ファイル: 0</span>
+      <span class="badge" id="badgeRows">読込点数: 0</span>
+      <span class="badge warn hidden" id="badgeSkipped">スキップ: 0</span>
+    </div>
+    <div id="fileInfo"></div>
+  </section>
+
+  <section class="panel">
+    <h2>統計サマリ</h2>
+    <div id="statsEmpty" class="empty-state">データを取得しています…</div>
+    <div id="statsContent" class="hidden">
+      <div id="rangeControls">
+        <label>開始 <input type="datetime-local" id="rangeStart" step="1"></label>
+        <label>終了 <input type="datetime-local" id="rangeEnd" step="1"></label>
+        <span class="preset-group">
+          <button type="button" data-preset="all">全期間</button>
+          <button type="button" data-preset="1h">直近1時間</button>
+          <button type="button" data-preset="6h">直近6時間</button>
+          <button type="button" data-preset="24h">直近24時間</button>
+        </span>
+      </div>
+      <div id="statsRange"></div>
+      <div id="statsGrid">
+        <div class="ch-card ch0">
+          <h3>CH0 (ch0_A)</h3>
+          <div class="stat-row"><span>最大</span><span id="ch0-max">-</span></div>
+          <div class="stat-row"><span>最小</span><span id="ch0-min">-</span></div>
+          <div class="stat-row"><span>平均</span><span id="ch0-mean">-</span></div>
+          <div class="stat-row"><span>積算 (A·h)</span><span id="ch0-integral">-</span></div>
+          <div class="stat-row"><span>データ点数</span><span id="ch0-count">-</span></div>
+        </div>
+        <div class="ch-card ch1">
+          <h3>CH1 (ch1_A)</h3>
+          <div class="stat-row"><span>最大</span><span id="ch1-max">-</span></div>
+          <div class="stat-row"><span>最小</span><span id="ch1-min">-</span></div>
+          <div class="stat-row"><span>平均</span><span id="ch1-mean">-</span></div>
+          <div class="stat-row"><span>積算 (A·h)</span><span id="ch1-integral">-</span></div>
+          <div class="stat-row"><span>データ点数</span><span id="ch1-count">-</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>時系列グラフ(電流 [A])</h2>
+    <div id="chartEmpty" class="empty-state">データを取得しています…</div>
+    <div id="chart" class="hidden"></div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const MAX_POINTS = 5000;
+  const INTEGRAL_GAP_THRESHOLD_MS = 60 * 1000; // 60秒を超えるdtは積算から除外
+
+  // sensor_type="1"（電流）のみ対象。sensor_no → 表示チャンネル。要確認(前提B/C)。
+  const CURRENT_SENSOR_TYPE = "1";
+  const SENSOR_NO_TO_CH = { 1: 'ch0', 2: 'ch1' };
+
+  // ファイル名の自然順ソート用（数字を数値として比較。file2 < file10）
+  const NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+  const DATA_BASE = '/data/';           // nginx が配信するデータディレクトリ（絶対パス。/realtime/ 配下でも常に /data/ を指す）
+  let POLL_INTERVAL_MS = 10000;         // 更新間隔（UIで変更可）
+
+  // ---- 状態 ----
+  // series.ch0 / series.ch1: [{ t: Date, v: number }] (チャンネル別の独立時系列)
+  let series = { ch0: [], ch1: [] };
+  // ファイル名 → { offset:バイト既読量, rowCount:採用点数, skipped:スキップ数 }
+  let fileState = {};
+  let totalSkipped = 0;
+  let liveFollow = true;
+  let pollTimer = null;
+  let polling = false;  // 多重実行防止
+
+  // ---- DOM参照 ----
+  const statusText = document.getElementById('statusText');
+  const lastUpdated = document.getElementById('lastUpdated');
+  const liveFollowChk = document.getElementById('liveFollowChk');
+  const intervalSel = document.getElementById('intervalSel');
+
+  const fileSummary = document.getElementById('fileSummary');
+  const badgeFiles = document.getElementById('badgeFiles');
+  const badgeRows = document.getElementById('badgeRows');
+  const badgeSkipped = document.getElementById('badgeSkipped');
+  const fileInfo = document.getElementById('fileInfo');
+
+  const statsEmpty = document.getElementById('statsEmpty');
+  const statsContent = document.getElementById('statsContent');
+  const statsRange = document.getElementById('statsRange');
+  const rangeControls = document.getElementById('rangeControls');
+  const rangeStartInput = document.getElementById('rangeStart');
+  const rangeEndInput = document.getElementById('rangeEnd');
+
+  let suppressRelayout = false;
+
+  const chartEmpty = document.getElementById('chartEmpty');
+  const chartDiv = document.getElementById('chart');
+
+  // =========================================================
+  // 1. 日時パース - new Date(文字列) には頼らない
+  // =========================================================
+  const DATETIME_RE = /^(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})$/;
+
+  function parseDateTime(str) {
+    if (typeof str !== 'string') return null;
+    const m = DATETIME_RE.exec(str.trim());
+    if (!m) return null;
+    const [, y, mo, d, h, mi, s, ms] = m;
+    return new Date(
+      Number(y), Number(mo) - 1, Number(d),
+      Number(h), Number(mi), Number(s), Number(ms)
+    );
+  }
+
+  // ローカル時刻の文字列変換(toISOString()はUTC変換されるため使用しない)
+  const LOCAL_INPUT_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+  function toLocalInputValue(d) {
+    const p2 = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+  }
+
+  function fromLocalInputValue(str) {
+    if (typeof str !== 'string' || str === '') return null;
+    const m = LOCAL_INPUT_RE.exec(str.trim());
+    if (!m) return null;
+    const [, y, mo, d, h, mi, s] = m;
+    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s || 0));
+  }
+
+  // =========================================================
+  // 2. CSV行の分類（旧定義/新定義 両対応。D&D版と同一ロジック）
+  // =========================================================
+  function classifyRow(row, out) {
+    if (!row || row.length < 3) return false;
+    const t = parseDateTime(row[0]);
+    if (!t) return false; // ヘッダ/不正行
+
+    let payload;
+    try { payload = JSON.parse(row[2]); } catch (e) { return false; }
+
+    let used = false;
+    if ('ch0_A' in payload || 'ch1_A' in payload) {
+      // 旧定義: 1行に両チャンネル
+      const ch0 = Number(payload.ch0_A);
+      const ch1 = Number(payload.ch1_A);
+      if (Number.isFinite(ch0)) { out.ch0.push({ t: t, v: ch0 }); used = true; }
+      if (Number.isFinite(ch1)) { out.ch1.push({ t: t, v: ch1 }); used = true; }
+    } else if ('sensor_type' in payload && 'value' in payload) {
+      // 新定義(machine.md): 1行1センサ1値
+      if (String(payload.sensor_type) === CURRENT_SENSOR_TYPE) {
+        const ch = SENSOR_NO_TO_CH[Number(payload.sensor_no)];
+        const v = Number(payload.value);
+        if (ch && Number.isFinite(v)) { out[ch].push({ t: t, v: v }); used = true; }
+      }
+    }
+    return used;
+  }
+
+  function classifyCsvText(text) {
+    const out = { ch0: [], ch1: [] };
+    let used = 0, skipped = 0;
+    const parsed = Papa.parse(text, { header: false, skipEmptyLines: true });
+    for (const row of parsed.data) {
+      if (classifyRow(row, out)) used++;
+      else skipped++;
+    }
+    return { ch0: out.ch0, ch1: out.ch1, used: used, skipped: skipped };
+  }
+
+  // =========================================================
+  // 3. ポーリング（一覧取得・差分取り込み）
+  // =========================================================
+  async function fetchListing() {
+    const res = await fetch(DATA_BASE + '?_=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('listing HTTP ' + res.status);
+    const arr = await res.json();
+    return arr.filter(e => e.type === 'file' && /\.csv$/i.test(e.name));
+  }
+
+  async function ingestChunk(name, fromByte) {
+    const url = DATA_BASE + encodeURIComponent(name);
+    const opt = { cache: 'no-store' };
+    if (fromByte > 0) opt.headers = { 'Range': 'bytes=' + fromByte + '-' };
+    const res = await fetch(url, opt);
+    if (res.status === 416) return 0;              // これ以上の範囲なし（新規データなし）
+    if (!res.ok && res.status !== 206) throw new Error('chunk HTTP ' + res.status);
+
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.length === 0) return 0;
+
+    // バイト列の「最後の改行(0x0A)」までを完全行として扱い、末尾の未完行は次回に持ち越す。
+    let lastNl = -1;
+    for (let i = buf.length - 1; i >= 0; i--) { if (buf[i] === 0x0A) { lastNl = i; break; } }
+    if (lastNl < 0) return 0;                       // まだ1行も完結していない
+
+    const complete = buf.subarray(0, lastNl + 1);
+    const text = new TextDecoder('utf-8').decode(complete);
+    const r = classifyCsvText(text);
+
+    series.ch0 = series.ch0.concat(r.ch0);
+    series.ch1 = series.ch1.concat(r.ch1);
+
+    const st = fileState[name] || { offset: 0, rowCount: 0, skipped: 0 };
+    st.offset = fromByte + (lastNl + 1);           // バイト単位で前進
+    st.rowCount += r.used;
+    st.skipped += r.skipped;
+    fileState[name] = st;
+    totalSkipped += r.skipped;
+
+    return r.used;
+  }
+
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      const files = await fetchListing();
+      files.sort((a, b) => NAME_COLLATOR.compare(a.name, b.name)); // 古い順に取り込む
+      let added = 0;
+      for (const f of files) {
+        const seen = fileState[f.name] ? fileState[f.name].offset : 0;
+        if (f.size > seen) {
+          added += await ingestChunk(f.name, seen);
+        } else if (!fileState[f.name]) {
+          fileState[f.name] = { offset: f.size, rowCount: 0, skipped: 0 }; // 空ファイル等
+        }
+      }
+      if (added > 0) {
+        series.ch0.sort((a, b) => a.t - b.t);
+        series.ch1.sort((a, b) => a.t - b.t);
+        refreshView();
+      }
+      renderFileInfoLive();
+      setStatus('ok');
+    } catch (e) {
+      setStatus('error', e);
+    } finally {
+      polling = false;
+      scheduleNext();
+    }
+  }
+
+  function scheduleNext() {
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+  }
+
+  function setStatus(kind, err) {
+    statusText.classList.remove('ok', 'error');
+    if (kind === 'ok') {
+      statusText.classList.add('ok');
+      statusText.textContent = '接続OK';
+      lastUpdated.textContent = '最終更新: ' + formatDate(new Date());
+    } else {
+      statusText.classList.add('error');
+      statusText.textContent = '取得エラー（リトライします）';
+      if (err) console.error('[poll]', err);
+    }
+  }
+
+  function renderFileInfoLive() {
+    const names = Object.keys(fileState);
+    if (names.length === 0) { fileSummary.classList.add('hidden'); fileInfo.innerHTML = ''; return; }
+    fileSummary.classList.remove('hidden');
+    badgeFiles.textContent = `ファイル: ${names.length}`;
+    badgeRows.textContent = `読込点数: ${(series.ch0.length + series.ch1.length).toLocaleString()}`;
+    if (totalSkipped > 0) {
+      badgeSkipped.classList.remove('hidden');
+      badgeSkipped.textContent = `スキップ: ${totalSkipped.toLocaleString()}`;
+    } else {
+      badgeSkipped.classList.add('hidden');
+    }
+
+    const sorted = names.slice().sort((a, b) => NAME_COLLATOR.compare(b, a)); // 降順
+    let html = '<table><thead><tr><th>ファイル名</th><th>読込点数</th><th>スキップ</th></tr></thead><tbody>';
+    for (const n of sorted) {
+      const st = fileState[n];
+      html += `<tr><td>${escapeHtml(n)}</td><td>${st.rowCount.toLocaleString()}</td><td>${st.skipped.toLocaleString()}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    fileInfo.innerHTML = html;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // =========================================================
+  // 4. ダウンサンプリング
+  // =========================================================
+  function downsample(arr) {
+    const n = arr.length;
+    if (n <= MAX_POINTS) return arr;
+    const step = Math.ceil(n / MAX_POINTS);
+    const out = [];
+    for (let i = 0; i < n; i += step) out.push(arr[i]);
+    // 最後の点は必ず含める(グラフの端が欠けないように)
+    if (out[out.length - 1] !== arr[n - 1]) out.push(arr[n - 1]);
+    return out;
+  }
+
+  // =========================================================
+  // 5. 描画:時系列グラフ
+  // =========================================================
+  function renderChart() {
+    if (!hasData()) {
+      chartEmpty.classList.remove('hidden');
+      chartDiv.classList.add('hidden');
+      return;
+    }
+    chartEmpty.classList.add('hidden');
+    chartDiv.classList.remove('hidden');
+
+    const ds0 = downsample(series.ch0);
+    const ds1 = downsample(series.ch1);
+
+    const traceCh0 = {
+      x: ds0.map(r => r.t),
+      y: ds0.map(r => r.v),
+      type: 'scattergl',
+      mode: 'lines',
+      name: 'ch0_A',
+      line: { color: '#1f77b4', width: 1.5 }
+    };
+    const traceCh1 = {
+      x: ds1.map(r => r.t),
+      y: ds1.map(r => r.v),
+      type: 'scattergl',
+      mode: 'lines',
+      name: 'ch1_A',
+      line: { color: '#ff7f0e', width: 1.5 }
+    };
+
+    const layout = {
+      margin: { l: 55, r: 20, t: 10, b: 40 },
+      xaxis: { title: '受信日時', type: 'date' },
+      yaxis: { title: '電流 [A]' },
+      legend: { orientation: 'h', y: 1.08 },
+      hovermode: 'x unified'
+    };
+
+    Plotly.react(chartDiv, [traceCh0, traceCh1], layout, { responsive: true });
+
+    // 期間連動の再バインド(reactでも既存リスナーは維持されるが、初回のみ安全にbind)
+    if (!chartDiv._relayoutBound) {
+      chartDiv.on('plotly_relayout', onChartRelayout);
+      chartDiv._relayoutBound = true;
+    }
+  }
+
+  function hasData() {
+    return series.ch0.length > 0 || series.ch1.length > 0;
+  }
+
+  function dataStartT() {
+    const t0 = series.ch0.length ? series.ch0[0].t : null;
+    const t1 = series.ch1.length ? series.ch1[0].t : null;
+    if (t0 && t1) return t0 < t1 ? t0 : t1;
+    return t0 || t1;
+  }
+
+  function dataEndT() {
+    const t0 = series.ch0.length ? series.ch0[series.ch0.length - 1].t : null;
+    const t1 = series.ch1.length ? series.ch1[series.ch1.length - 1].t : null;
+    if (t0 && t1) return t0 > t1 ? t0 : t1;
+    return t0 || t1;
+  }
+
+  // =========================================================
+  // 6. 統計計算
+  // =========================================================
+  function computeChannelStats(subset) {
+    const n = subset.length;
+    if (n === 0) {
+      return { count: 0, max: null, min: null, mean: null, integral: 0 };
+    }
+
+    let max = -Infinity, min = Infinity, sum = 0, integral = 0;
+
+    for (let i = 0; i < n; i++) {
+      const r = subset[i];
+      if (r.v > max) max = r.v;
+      if (r.v < min) min = r.v;
+      sum += r.v;
+
+      if (i > 0) {
+        const dtMs = subset[i].t - subset[i - 1].t;
+        if (dtMs > 0 && dtMs <= INTEGRAL_GAP_THRESHOLD_MS) {
+          const dtH = dtMs / 3600000;
+          integral += (subset[i - 1].v + subset[i].v) / 2 * dtH;
+        }
+      }
+    }
+
+    return { count: n, max: max, min: min, mean: sum / n, integral: integral };
+  }
+
+  function filterRange(arr, startMs, endMs) {
+    return arr.filter(r => {
+      const t = r.t.getTime();
+      return t >= startMs && t <= endMs;
+    });
+  }
+
+  function fmt(v, digits) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return '-';
+    return v.toFixed(digits === undefined ? 3 : digits);
+  }
+
+  function renderStats(startMs, endMs) {
+    if (!hasData()) {
+      statsEmpty.classList.remove('hidden');
+      statsContent.classList.add('hidden');
+      return;
+    }
+    statsEmpty.classList.add('hidden');
+    statsContent.classList.remove('hidden');
+
+    const subset0 = filterRange(series.ch0, startMs, endMs);
+    const subset1 = filterRange(series.ch1, startMs, endMs);
+    const stats0 = computeChannelStats(subset0);
+    const stats1 = computeChannelStats(subset1);
+
+    const allSubset = subset0.concat(subset1);
+    const totalAll = series.ch0.length + series.ch1.length;
+    if (allSubset.length > 0) {
+      let rangeMinT = allSubset[0].t, rangeMaxT = allSubset[0].t;
+      for (const r of allSubset) {
+        if (r.t < rangeMinT) rangeMinT = r.t;
+        if (r.t > rangeMaxT) rangeMaxT = r.t;
+      }
+      statsRange.textContent =
+        `表示期間: ${formatDate(rangeMinT)} 〜 ${formatDate(rangeMaxT)}` +
+        `(全期間中 ${allSubset.length.toLocaleString()} / ${totalAll.toLocaleString()} 点)`;
+    } else {
+      statsRange.textContent = '表示期間にデータがありません';
+    }
+
+    document.getElementById('ch0-max').textContent = fmt(stats0.max);
+    document.getElementById('ch0-min').textContent = fmt(stats0.min);
+    document.getElementById('ch0-mean').textContent = fmt(stats0.mean);
+    document.getElementById('ch0-integral').textContent = fmt(stats0.integral, 4);
+    document.getElementById('ch0-count').textContent = stats0.count.toLocaleString();
+
+    document.getElementById('ch1-max').textContent = fmt(stats1.max);
+    document.getElementById('ch1-min').textContent = fmt(stats1.min);
+    document.getElementById('ch1-mean').textContent = fmt(stats1.mean);
+    document.getElementById('ch1-integral').textContent = fmt(stats1.integral, 4);
+    document.getElementById('ch1-count').textContent = stats1.count.toLocaleString();
+  }
+
+  function formatDate(d) {
+    const p2 = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+  }
+
+  // =========================================================
+  // 7. 統計期間の選択(単一の入口関数。双方向連動の要)
+  // =========================================================
+  function setRange(start, end, source) {
+    if (!hasData()) {
+      rangeStartInput.value = '';
+      rangeEndInput.value = '';
+      renderStats(0, 0);
+      return;
+    }
+
+    if (!start) start = dataStartT();
+    if (!end) end = dataEndT();
+
+    rangeStartInput.value = toLocalInputValue(start);
+    rangeEndInput.value = toLocalInputValue(end);
+
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    renderStats(startMs, endMs);
+
+    // グラフ操作起点(source === 'plot')のときはグラフは既に動いているので relayout しない。
+    // データ0件・チャート未描画(hidden)時も relayout しない。
+    if (source !== 'plot' && !chartDiv.classList.contains('hidden')) {
+      suppressRelayout = true;
+      Plotly.relayout(chartDiv, { 'xaxis.range': [start, end] }).then(() => {
+        suppressRelayout = false;
+      });
+    }
+  }
+
+  function onChartRelayout(eventData) {
+    if (suppressRelayout) return;
+    if (!eventData) return;
+
+    // 全期間に戻された場合(ダブルクリックによるautorangeリセットなど)
+    if (eventData['xaxis.autorange'] === true || eventData['autosize']) {
+      setRange(null, null, 'plot');
+      return;
+    }
+
+    const x0 = eventData['xaxis.range[0]'];
+    const x1 = eventData['xaxis.range[1]'];
+    if (x0 === undefined || x1 === undefined) return;
+
+    const start = new Date(x0);
+    const end = new Date(x1);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+
+    setRange(start, end, 'plot');
+  }
+
+  // ---- 日時入力欄・プリセットボタンのイベント配線 ----
+  function onRangeInputChange() {
+    if (!hasData()) return;
+    let start = fromLocalInputValue(rangeStartInput.value);
+    let end = fromLocalInputValue(rangeEndInput.value);
+    if (!start) start = dataStartT();
+    if (!end) end = dataEndT();
+    if (start.getTime() > end.getTime()) return; // 不正な範囲は無視
+    setRange(start, end, 'input');
+  }
+  rangeStartInput.addEventListener('change', onRangeInputChange);
+  rangeEndInput.addEventListener('change', onRangeInputChange);
+
+  rangeControls.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-preset]');
+    if (!btn || !hasData()) return;
+    const preset = btn.dataset.preset;
+    if (preset === 'all') {
+      setRange(null, null, 'preset');
+      return;
+    }
+    const hoursMap = { '1h': 1, '6h': 6, '24h': 24 };
+    const hours = hoursMap[preset];
+    if (!hours) return;
+    const dataStart = dataStartT();
+    const dataEnd = dataEndT();
+    let start = new Date(dataEnd.getTime() - hours * 3600000);
+    if (start.getTime() < dataStart.getTime()) start = dataStart;
+    setRange(start, dataEnd, 'preset');
+  });
+
+  // =========================================================
+  // 8. 全体再描画・ライブ追従
+  // =========================================================
+  function renderAll() {
+    renderChart();
+    setRange(null, null, 'reset');
+  }
+
+  function refreshView() {
+    renderChart();
+    if (liveFollow) {
+      // 最新を含む全期間へ追従
+      setRange(null, null, 'live');
+    } else {
+      // ユーザーが選択中の期間を維持（入力欄の値を再適用）
+      const s = fromLocalInputValue(rangeStartInput.value);
+      const e = fromLocalInputValue(rangeEndInput.value);
+      setRange(s, e, 'live');
+    }
+  }
+
+  liveFollowChk.addEventListener('change', () => { liveFollow = liveFollowChk.checked; refreshView(); });
+  intervalSel.addEventListener('change', () => { POLL_INTERVAL_MS = Number(intervalSel.value) || 10000; scheduleNext(); });
+
+  // 起動：初期描画（空）→ 即1回ポーリング → 以降ループ
+  renderAll();
+  poll();
+
+})();
+</script>
+
+</body>
+</html>
