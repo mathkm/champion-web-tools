@@ -1,7 +1,7 @@
 services:
   web:
     image: nginx:1.27-alpine
-    container_name: ampere-realtime-web
+    container_name: ampere-web
     ports:
       - "8081:80"
     volumes:
