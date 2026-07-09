@@ -309,6 +309,9 @@
   const rangeEndInput = document.getElementById('rangeEnd');
 
   let suppressRelayout = false;
+  // 現在チャートに適用中の表示範囲（renderChart が Plotly.react の layout に焼き込むため保持する）
+  let currentRangeStart = null;
+  let currentRangeEnd = null;
 
   const chartEmpty = document.getElementById('chartEmpty');
   const chartDiv = document.getElementById('chart');
@@ -551,9 +554,17 @@
       line: { color: '#ff7f0e', width: 1.5 }
     };
 
+    // 現在の表示範囲を layout に焼き込む(自動更新の再描画時に一瞬autorangeへ戻るのを防ぐ。
+    // これをしないと Plotly.react() が毎回autorangeし、直後の setRange 側 relayout との
+    // タイミング競合で「開始(from)」が全期間にリセットされることがある)。
+    const xaxis = { title: '受信日時', type: 'date' };
+    if (currentRangeStart && currentRangeEnd) {
+      xaxis.range = [currentRangeStart, currentRangeEnd];
+    }
+
     const layout = {
       margin: { l: 55, r: 20, t: 10, b: 40 },
-      xaxis: { title: '受信日時', type: 'date' },
+      xaxis: xaxis,
       yaxis: { title: '電流 [A]' },
       legend: { orientation: 'h', y: 1.08 },
       hovermode: 'x unified'
@@ -681,12 +692,17 @@
     if (!hasData()) {
       rangeStartInput.value = '';
       rangeEndInput.value = '';
+      currentRangeStart = null;
+      currentRangeEnd = null;
       renderStats(0, 0);
       return;
     }
 
     if (!start) start = dataStartT();
     if (!end) end = dataEndT();
+
+    currentRangeStart = start;
+    currentRangeEnd = end;
 
     rangeStartInput.value = toLocalInputValue(start);
     rangeEndInput.value = toLocalInputValue(end);
@@ -695,9 +711,14 @@
     const endMs = end.getTime();
     renderStats(startMs, endMs);
 
-    // グラフ操作起点(source === 'plot')のときはグラフは既に動いているので relayout しない。
-    // データ0件・チャート未描画(hidden)時も relayout しない。
-    if (source !== 'plot' && !chartDiv.classList.contains('hidden')) {
+    // 明示的な Plotly.relayout は「ユーザーが直接操作した」(日時入力欄・プリセットボタン)
+    // ときだけ行う。グラフ操作起点('plot')は既にその位置に動いている。
+    // 自動更新によるデータ再取得起点('live'/'reset')は、この直後に renderChart が
+    // 呼ばれて layout.xaxis.range に現在の範囲を焼き込んで描画するため、ここで
+    // relayout すると Plotly.react のautorangeイベントと競合し、
+    // 「開始(from)」が全期間にリセットされるレースコンディションの原因になる。
+    const isDirectUserAction = source === 'input' || source === 'preset';
+    if (isDirectUserAction && !chartDiv.classList.contains('hidden')) {
       suppressRelayout = true;
       Plotly.relayout(chartDiv, { 'xaxis.range': [start, end] }).then(() => {
         suppressRelayout = false;
@@ -761,12 +782,14 @@
   // 8. 全体再描画・ライブ追従
   // =========================================================
   function renderAll() {
-    renderChart();
+    // 先に範囲(currentRangeStart/End)を確定させてから描画する。
+    // renderChart が layout.xaxis.range にその範囲を焼き込むため、
+    // 描画→relayoutの二段構えによるレースが起きない。
     setRange(null, null, 'reset');
+    renderChart();
   }
 
   function refreshView() {
-    renderChart();
     if (liveFollow) {
       // 最新を含む全期間へ追従
       setRange(null, null, 'live');
@@ -776,6 +799,7 @@
       const e = fromLocalInputValue(rangeEndInput.value);
       setRange(s, e, 'live');
     }
+    renderChart();
   }
 
   liveFollowChk.addEventListener('change', () => { liveFollow = liveFollowChk.checked; refreshView(); });
