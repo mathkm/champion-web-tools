@@ -790,15 +790,15 @@
   }
 
   function refreshView() {
-    if (liveFollow) {
-      // 最新を含む全期間へ追従
-      setRange(null, null, 'live');
-    } else {
-      // ユーザーが選択中の期間を維持（入力欄の値を再適用）
-      const s = fromLocalInputValue(rangeStartInput.value);
-      const e = fromLocalInputValue(rangeEndInput.value);
-      setRange(s, e, 'live');
-    }
+    // if (liveFollow) {
+    //   // 最新を含む全期間へ追従
+    //   // setRange(null, null, 'live');
+    // } else {
+    // ユーザーが選択中の期間を維持（入力欄の値を再適用）
+    const s = fromLocalInputValue(rangeStartInput.value);
+    const e = fromLocalInputValue(rangeEndInput.value);
+    setRange(s, e, 'live');
+    // }
     renderChart();
   }
 
