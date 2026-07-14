@@ -278,7 +278,7 @@
 (function () {
   "use strict";
 
-  const MAX_POINTS = 5000;
+  const MAX_POINTS = 25000; // 表示粒度を約5倍に(1チャンネルあたり最大プロット点数)
   const INTEGRAL_GAP_THRESHOLD_MS = 60 * 1000; // 60秒を超えるdtは積算から除外
 
   // sensor_type="1"（電流）のみ対象。sensor_no → 表示チャンネル。要確認(前提B/C)。
