@@ -1,0 +1,1208 @@
+[
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "形彫り放電加工機",
+    "manageId": "OK-033",
+    "model": "ソディック\nAQ35L",
+    "connector": "不明",
+    "description": "開始～終了時に電圧向上見込み"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "OK-001",
+    "model": "ヤスダ\nYBM640V2",
+    "connector": "RJ45",
+    "description": "加工中のランプなし"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "ワイヤーカット放電加工機",
+    "manageId": "OK-038",
+    "model": "ソディック\nAQ535L",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "デッドツール",
+    "manageId": "OK-025",
+    "model": "テクノワシノ\nTECHSTER A3",
+    "connector": "",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "倣い研削盤",
+    "manageId": "OK-003",
+    "model": "テクノワシノ\nGLS-5T",
+    "connector": "RS232C",
+    "description": "ランプあり"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "ワイヤーカット放電加工機",
+    "manageId": "OK-039",
+    "model": "ソディック\nAQ537L",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "倣い研削盤",
+    "manageId": "OK-063",
+    "model": "アマダワシノ\nGLS-5T",
+    "connector": "RS232C",
+    "description": "加工中はランプが消える"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "形彫り放電加工機",
+    "manageId": "OK-067",
+    "model": "ソディック\nAG55L",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "形彫り放電加工機",
+    "manageId": "OK-034",
+    "model": "ソディック\nAP1L",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "形彫り放電加工機",
+    "manageId": "OK-074",
+    "model": "ソディック\nAQ35L",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "形彫り放電加工機",
+    "manageId": "OK-091",
+    "model": "ソディック\nAQ35L",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "内径研削盤",
+    "manageId": "OK-071",
+    "model": "オカモト\nIGM2MB",
+    "connector": "不明",
+    "description": "端子なし"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "内径研削盤",
+    "manageId": "OK-012",
+    "model": "山田工機",
+    "connector": "不明",
+    "description": "加工対象、砥石の双方が回転\n内側から削っていく"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "外径研削盤",
+    "manageId": "OK-092",
+    "model": "トヨダ\nGE4i",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "OK-075",
+    "model": "ソディック\nHS150L",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "倣い研削盤",
+    "manageId": "OK-083",
+    "model": "アマダマシナリー\nGLS-150GL",
+    "connector": "不明",
+    "description": "加工中はランプが消える"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "不明",
+    "model": "オークマ\nMB-46VAE",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "不明",
+    "model": "オークマ\nMC-40VA",
+    "connector": "RS232C",
+    "description": "要RJ45調査"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "OK-072",
+    "model": "",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "OK-046",
+    "model": "",
+    "connector": "なし",
+    "description": "回り始めたら加工"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "OK-045",
+    "model": "",
+    "connector": "なし",
+    "description": "回り始めたら加工"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "汎用",
+    "machineKind": "ピンフェーサー",
+    "manageId": "OK-097",
+    "model": "",
+    "connector": "なし",
+    "description": "測定不要\n開始→終了がわかればOK"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "OK-093",
+    "model": "アマダマシナリー\nテクスター52",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "OK-065",
+    "model": "アマダワシノ\nTSD3",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "NC",
+    "machineKind": "旋盤",
+    "manageId": "OK-044",
+    "model": "テクノワシノ\nJ5",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "NC",
+    "machineKind": "ガンドリル",
+    "manageId": "OK-086",
+    "model": "DZSK2-12",
+    "connector": "不明",
+    "description": "回転開始→終了で測定"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "OK-086",
+    "model": "タキサワ\nTSL-550",
+    "connector": "なし",
+    "description": ""
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "汎用",
+    "machineKind": "熱処理",
+    "manageId": "OK-040",
+    "model": "",
+    "connector": "なし",
+    "description": "サーバーで管理中のため\nそこから状況取得"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "汎用",
+    "machineKind": "熱処理",
+    "manageId": "不明",
+    "model": "",
+    "connector": "",
+    "description": "OK-040で状態取得"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "汎用",
+    "machineKind": "熱処理",
+    "manageId": "不明",
+    "model": "",
+    "connector": "",
+    "description": "OK-040で状態取得"
+  },
+  {
+    "placement": "本社第二",
+    "machineType": "その他",
+    "machineKind": "歪み取り",
+    "manageId": "不明",
+    "model": "",
+    "connector": "",
+    "description": "工程としては管理\n作業時間をどうするかは相談"
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "ドリルタップセンタ",
+    "manageId": "YO-012",
+    "model": "ファースト技研\nHAL-K106",
+    "connector": "未発見",
+    "description": "CNC 三菱 M70 Type B\n配電盤中にシリアルポートのようなものあり"
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "YO-010",
+    "model": "アマダマシナリー\nテクスター52",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "YO-008",
+    "model": "アマダマシナリー\nテクスター52",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "その他加工機",
+    "manageId": "YO-011",
+    "model": "PF32B",
+    "connector": "不明",
+    "description": "未使用状態のため、\n測定不要"
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "不明",
+    "model": "ソディック",
+    "connector": "",
+    "description": "本社にあったものが移動\n管理番号不明"
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "YO-001",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "YO-002",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "YO-003",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "YO-004",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "YO-005",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "YO-006",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "八尾",
+    "machineType": "NC",
+    "machineKind": "レーザー刻印機",
+    "manageId": "YO-009",
+    "model": "ブラザー\nLM3200F",
+    "connector": "その他",
+    "description": "機械の稼働状況は不要\n工程管理は必要"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "センタレスグラインダー",
+    "manageId": "OK-082",
+    "model": "日本精機\nMG-16H",
+    "connector": "不明",
+    "description": "回転体*2に挟んで部品を削る"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "内径研削盤",
+    "manageId": "不明",
+    "model": "山田工機",
+    "connector": "不明",
+    "description": "手動回転の内径研削機"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "内径研削盤",
+    "manageId": "OK-009",
+    "model": "スズキ\nインターナルグラインダー",
+    "connector": "不明",
+    "description": "手動回転の内径研削機"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "パンチホーマー",
+    "manageId": "OK-011",
+    "model": "スズキ",
+    "connector": "不明",
+    "description": "商品は固定し、回転体を当てる"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "外径研削盤",
+    "manageId": "OK-098",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "商品を回転させ、外側から回転する砥石を当てる"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "外径研削盤",
+    "manageId": "OK-078",
+    "model": "トンギル（中国）GU32H",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "外径研削盤",
+    "manageId": "OK-006",
+    "model": "トヨダ",
+    "connector": "不明",
+    "description": "加工中は加工液が多く出る"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "外径研削盤",
+    "manageId": "不明",
+    "model": "シギヤ\nGPH-20B",
+    "connector": "RJ45",
+    "description": "新しいため管理番号未貼付\n操作盤裏にRJ45あり"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "外径研削盤",
+    "manageId": "不明",
+    "model": "オカモト\nOGM250EXⅢ",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "OK-089",
+    "model": "オークマ\nMB-46VAE",
+    "connector": "RJ45",
+    "description": "加工中に青ランプ点灯"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "OK-094",
+    "model": "マキノ\nD200Z",
+    "connector": "RJ45",
+    "description": "加工中に青ランプ点灯"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "デッドツール",
+    "manageId": "OK-027",
+    "model": "テクノワシノ\nTFG-M1",
+    "connector": "不明",
+    "description": "加工物はセンターに位置固定。\n回転は加工物も行う。"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "デッドツール",
+    "manageId": "OK-026",
+    "model": "テクノワシノ\nTECHSTER A3",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "成形研削盤",
+    "manageId": "OK-070",
+    "model": "アマダマシナリー\nTFH1",
+    "connector": "不明",
+    "description": "砥石が中央に位置固定され\nテーブルが動くことで加工される"
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "成形研削盤",
+    "manageId": "OK-079",
+    "model": "アマダマシナリー\nTFH1",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "汎用",
+    "machineKind": "成形研削盤",
+    "manageId": "OK-028",
+    "model": "ワシノ\nマイスターPRO",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "OK-029",
+    "model": "オカモト\nPFG500",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "OK-062",
+    "model": "ワシノ\nTSA3",
+    "connector": "不明",
+    "description": "一応NCのよう"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "不明",
+    "model": "ワシノ\nマイスター52",
+    "connector": "不明",
+    "description": "テーブルの動き+砥石の高さで加工判定？"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "不明",
+    "model": "ソディック\nHS150L",
+    "connector": "RJ45",
+    "description": "ランプあり"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "ワイヤーカット放電加工機",
+    "manageId": "不明",
+    "model": "ソディック\nAL400",
+    "connector": "RJ45",
+    "description": "新しいため未貼付"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "形彫り放電加工機",
+    "manageId": "OK-084",
+    "model": "Aitronix\nAx1601",
+    "connector": "不明",
+    "description": "小型。現在使用状況なし。"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "ワイヤーカット放電加工機",
+    "manageId": "不明",
+    "model": "ソディック\nALN400Q",
+    "connector": "RJ45",
+    "description": "新しいため未貼付"
+  },
+  {
+    "placement": "本社",
+    "machineType": "NC",
+    "machineKind": "ワイヤーカット放電加工機",
+    "manageId": "OK-035",
+    "model": "三菱電機 \nFA-20M\nWA1-FA2",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-008",
+    "model": "野村DS\nNN-20H3",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-009",
+    "model": "野村DS\nNN-20H3",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-010",
+    "model": "野村DS\nNN-20H3",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-011",
+    "model": "野村DS\nNN-20H3",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-118",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-100",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": "202011503"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-101",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-102",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-103",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-104",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-093",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": "2004"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-120",
+    "model": "野村DS\nNN-32U5",
+    "connector": "RS232C",
+    "description": "231081801"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-015",
+    "model": "野村DS\nNNCP2553",
+    "connector": "RS232C",
+    "description": "廃棄予定"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-014",
+    "model": "野村DS\nNNCP2553",
+    "connector": "RS232C",
+    "description": "廃棄予定"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-016",
+    "model": "野村DS\nNNCP2553",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-007",
+    "model": "野村DS\nNN20K",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-013",
+    "model": "野村DS\nNN20HB",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-119",
+    "model": "野村DS\nNN-20U5",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC自動旋盤",
+    "manageId": "MK-001",
+    "model": "野村DS\nNNCP1053",
+    "connector": "不明",
+    "description": "現在稼働ほぼなし"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-063",
+    "model": "オークマ\nLB3000EX",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-062",
+    "model": "オークマ\nLB3000EX",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-060",
+    "model": "オークマ\nLB3000EX",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-061",
+    "model": "オークマ\nLB300",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-128",
+    "model": "オークマ\nLB3000EXⅡ",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-124",
+    "model": "オークマ\nLB3000EXⅡ",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-096",
+    "model": "オークマ\nGENOS L250H",
+    "connector": "RJ45",
+    "description": "配電盤中にRJ45あり\n（アウトプット用かは不明）\n183828"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-095",
+    "model": "オークマ\nGENOS L250H",
+    "connector": "RJ45",
+    "description": "配電盤中にRJ45あり （アウトプット用かは不明）"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-130",
+    "model": "オークマ\nLB3000EXⅡ",
+    "connector": "RJ45",
+    "description": "配電盤中にRJ45あり （アウトプット用かは不明）"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-137",
+    "model": "オークマ\nLB3000EXⅡ",
+    "connector": "不明",
+    "description": "配電盤中にRJ45の可能性大（未確認）"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "MK-109",
+    "model": "オークマ\nMB-46VA",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "マシニングセンタ",
+    "manageId": "MK-085",
+    "model": "オークマ\nMX-45VAE",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "CNC旋盤",
+    "manageId": "MK-059",
+    "model": "オークマ\nLB15Ⅱ",
+    "connector": "RS232C",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "フライス盤",
+    "manageId": "MK-024",
+    "model": "オークマ\n2R-NC",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "成形研削盤",
+    "manageId": "MK-073",
+    "model": "NICCO\nNSC-515HBⅡ",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "パンチホーマー",
+    "manageId": "MK-132",
+    "model": "Rational（中国）",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "成形研削盤",
+    "manageId": "不明",
+    "model": "オカモト\nPFG500",
+    "connector": "不明",
+    "description": "松阪工場"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "成形研削盤",
+    "manageId": "MK-129",
+    "model": "オカモト\nPFG500Ⅱ",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "その他",
+    "machineKind": "熱処理",
+    "manageId": "MK-110",
+    "model": "真空炉",
+    "connector": "不明",
+    "description": "入れたときが開始\n出した時が完了"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "その他",
+    "machineKind": "熱処理",
+    "manageId": "MK-023",
+    "model": "真空炉",
+    "connector": "不明",
+    "description": "入れた時が開始\n出した時が完了"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "その他",
+    "machineKind": "熱処理",
+    "manageId": "MK-081",
+    "model": "窒化炉",
+    "connector": "不明",
+    "description": "入れた時が開始\n出した時が完了"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "センタレスグラインダー",
+    "manageId": "MK-070",
+    "model": "NISSEI\nMG-16",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "センタレスグラインダー",
+    "manageId": "MK-135",
+    "model": "NISSEI\nMG-16H",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "その他",
+    "machineKind": "センタレスグラインダー",
+    "manageId": "MK-122",
+    "model": "NISSEI\nLGB-18HNW",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "センタレスグラインダー",
+    "manageId": "MK-071",
+    "model": "NISSEI\nLG-18W",
+    "connector": "不明",
+    "description": "廃棄予定"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "センタレスグラインダー",
+    "manageId": "MK-069",
+    "model": "NISSEI\nBG-014",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "MK-032",
+    "model": "タキサワ\nTSL-550",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ピンフェーサー",
+    "manageId": "MK-047",
+    "model": "",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ピンカットフェーサー",
+    "manageId": "MK-049",
+    "model": "",
+    "connector": "不明",
+    "description": "電圧 + レバーの動きで取る？"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-111",
+    "model": "",
+    "connector": "不明",
+    "description": "廃棄予定"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-117",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "加工中のランプ点灯"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-105",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "加工中のランプ点灯"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-106",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "加工中のランプ点灯"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-099",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "加工中のランプ点灯"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-090",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "加工中のランプ点灯"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-139",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "加工中のランプ点灯"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ガンドリル",
+    "manageId": "MK-098",
+    "model": "中国製",
+    "connector": "不明",
+    "description": "加工中のランプ点灯"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "放電穴あけ加工機",
+    "manageId": "MK-121",
+    "model": "ソディック\nK3HS",
+    "connector": "RJ45",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "放電穴あけ加工機",
+    "manageId": "MK-091",
+    "model": "日本放電技術\nJEM-50FD",
+    "connector": "不明",
+    "description": "かなり古いように思う"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "MK-031",
+    "model": "ヤマザキマザック\nMATE570S",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "MK-034",
+    "model": "NARA\n4311",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "MK-168",
+    "model": "ワシノ",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "MK-107",
+    "model": "ワシノ",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "旋盤",
+    "manageId": "MK-094",
+    "model": "タキサワ\nTSL550",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "汎用",
+    "machineKind": "ターレット",
+    "manageId": "MK-042",
+    "model": "エグロ\nTL8",
+    "connector": "不明",
+    "description": "複数工具が付いた刃物台を利用してワークを工作"
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "ドリルタップセンタ",
+    "manageId": "MK-127",
+    "model": "ファースト技研\nHAL-K106",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "ドリルタップセンタ",
+    "manageId": "MK-125",
+    "model": "ファースト技研\nHAL-K106",
+    "connector": "不明",
+    "description": ""
+  },
+  {
+    "placement": "松阪",
+    "machineType": "NC",
+    "machineKind": "放電穴あけ加工機",
+    "manageId": "不明",
+    "model": "ソディック",
+    "connector": "不明",
+    "description": "廃棄予定"
+  }
+]

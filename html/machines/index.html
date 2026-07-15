@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>機械一覧</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:        #1565c0;
+      --primary-light:  #e3f2fd;
+      --primary-border: #90caf9;
+      --success:        #2e7d32;
+      --danger:         #c62828;
+      --warning:        #e65100;
+      --text:           #212121;
+      --text-sub:       #616161;
+      --text-hint:      #9e9e9e;
+      --bg:             #f0f4f8;
+      --card:           #ffffff;
+      --border:         #e0e0e0;
+      --radius:         8px;
+      --touch:          44px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .app-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 8px 12px 8px;
+      flex-shrink: 0;
+      z-index: 200;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    .app-header-row1 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+    .app-header h1 { font-size: 17px; font-weight: 600; flex: 1; }
+    .dirty-chip {
+      background: var(--warning);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    .app-header-row2 { display: flex; gap: 6px; }
+    .btn-header {
+      flex: 1;
+      min-height: 36px;
+      padding: 0 6px;
+      background: rgba(255,255,255,.18);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+    }
+    .btn-header:active { background: rgba(255,255,255,.32); }
+    .app-header-filename {
+      font-size: 11px;
+      color: rgba(255,255,255,.75);
+      margin-top: 5px;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    /* ── Layout ──────────────────────────────── */
+    .container {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      max-width: 560px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Card ────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-bottom: 10px;
+    }
+
+    /* ── Buttons ─────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-height: var(--touch);
+      padding: 0 16px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: filter .15s;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { filter: brightness(.88); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger  { background: var(--danger);  color: #fff; }
+    .btn-outline { background: #fff; color: var(--text-sub); border: 1px solid var(--border); }
+    .btn-light   { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary-border); }
+    .btn-sm      { min-height: 36px; padding: 0 12px; font-size: 13px; }
+    .btn-block   { width: 100%; }
+    .btn-row     { display: flex; gap: 8px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ── Forms ───────────────────────────────── */
+    .form-group { margin-bottom: 10px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+    }
+    .form-control-placement {
+      min-height: var(--touch);
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      color: var(--text);
+      background: #fff;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .form-control {
+      width: 100%;
+      min-height: var(--touch);
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      color: var(--text);
+      background: #fff;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(21,101,192,.18);
+    }
+    select.form-control {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23757575'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 34px;
+    }
+    textarea.form-control {
+      padding: 10px 12px;
+      min-height: 80px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+    .form-hint  { font-size: 11px; color: var(--text-hint); margin-top: 3px; }
+    .form-error { font-size: 11px; color: var(--danger); margin-top: 3px; display: none; }
+    .form-error.show { display: block; }
+    .form-control.invalid { border-color: var(--danger); }
+
+    /* manageId compound row */
+    .mid-row { display: flex; gap: 4px; align-items: center; }
+    .mid-row .prefix { flex: 0 0 72px; }
+    .mid-row .sep    { color: var(--text-hint); font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .mid-row .num    { flex: 1; min-width: 0; }
+    .mid-row .free   { flex: 1; }
+
+    /* ── 3-column form row ───────────────────── */
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .form-row-3 .form-group { margin-bottom: 0; }
+
+    /* ── 3-column + clear button row ────────── */
+    .form-row-clear {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
+    .form-row-clear .form-group { margin-bottom: 0; }
+    .form-row-clear .btn-clear {
+      min-height: var(--touch);
+      padding: 0 6px;
+      white-space: nowrap;
+      align-self: end;
+      background: var(--primary-border);  
+      color: #fff;
+    }
+
+    /* ── Search toggle ───────────────────────── */
+    .search-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .search-header .arrow { font-size: 12px; color: var(--text-hint); transition: transform .2s; }
+    .search-header.open .arrow { transform: rotate(180deg); }
+    .search-body { display: none; margin-top: 12px; }
+    .search-body.open { display: block; }
+
+    /* ── List section ────────────────────────── */
+    #listSection {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    /* ── List toolbar ────────────────────────── */
+    .list-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+      gap: 6px;
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+    .list-count { font-size: 13px; color: var(--text-sub); white-space: nowrap; }
+    .filter-chip {
+      font-size: 11px;
+      font-weight: 600;
+      background: #e8f5e9;
+      color: var(--success);
+      border: 1px solid #a5d6a7;
+      padding: 2px 6px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    .machine-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+      padding-bottom: 8px;
+    }
+
+    /* ── Machine card ────────────────────────── */
+    .mc {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .mc-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .mc-id { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .mc-type {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+      padding: 2px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .mc-body {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 3px 8px;
+      font-size: 13px;
+    }
+    .mc-lbl { color: var(--text-hint); white-space: nowrap; align-self: baseline; line-height: 1.6; }
+    .mc-val { color: var(--text); word-break: break-word; line-height: 1.6; }
+    .mc-val.empty { color: var(--text-hint); }
+    .mc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .btn-xs {
+      min-height: 30px;
+      padding: 0 10px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    /* ── Empty state ─────────────────────────── */
+    .empty-state { text-align: center; padding: 40px 16px; color: var(--text-hint); }
+    .empty-state-icon { font-size: 44px; margin-bottom: 10px; }
+
+    /* ── Modal ───────────────────────────────── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 500;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .overlay.open { display: flex; }
+    @media (min-height: 620px) {
+      .overlay { align-items: center; padding: 16px; }
+    }
+    .modal {
+      background: var(--card);
+      border-radius: 14px 14px 0 0;
+      width: 100%;
+      max-width: 520px;
+      max-height: 92dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    @media (min-height: 620px) {
+      .modal { border-radius: 14px; max-height: 88dvh; }
+    }
+    .modal-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      color: var(--text-hint);
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      min-height: 0;
+    }
+    .modal-body { padding: 16px; overflow-y: auto; flex: 1; }
+    .modal-foot {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+
+    /* ── Confirm ─────────────────────────────── */
+    .confirm-text {
+      font-size: 15px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── Toast ───────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: #37474f;
+      color: #fff;
+      padding: 11px 20px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      max-width: 88vw;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,.3);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: var(--danger); }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ─────────────────────────────────── -->
+<header class="app-header">
+  <div class="app-header-row1">
+    <h1>機械一覧</h1>
+    <select class="form-control-placement prefix" id="sPlacement">
+      <option value="">すべて</option>
+      <option value="本社">本社</option>
+      <option value="本社第二">本社第二</option>
+      <option value="八尾">八尾</option>
+      <option value="松阪">松阪</option>
+    </select>
+    <span class="dirty-chip" id="dirtyChip" style="display:none">未エクスポート</span>
+  </div>
+  <div class="app-header-row2">
+    <button class="btn-header" onclick="reloadFromServer()">🔄 再読込</button>
+    <input type="file" id="fileInput" accept=".json" style="display:none">
+    <button class="btn-header" onclick="$('fileInput').click()">📂 ファイル選択</button>
+    <button class="btn-header" onclick="exportJSON()">↓ JSON</button>
+    <button class="btn-header" onclick="exportCSV()">↓ CSV</button>
+  </div>
+  <p class="app-header-filename" id="fileNameLabel" style="display:none"></p>
+</header>
+
+<div class="container">
+
+  <!-- ─── Search ────────────────────────────────── -->
+  <div class="card" id="searchCard" style="display:none; flex-shrink:0">
+    <div class="search-header" id="searchHeader" onclick="toggleSearch()">
+      <div class="card-title" style="margin-bottom:0">検索条件</div>
+      <span class="arrow" id="searchArrow">▼</span>
+    </div>
+    <div class="search-body" id="searchBody">
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>種別</label>
+          <select class="form-control" id="sMachineType">
+            <option value="">すべて</option>
+            <option value="NC">NC</option>
+            <option value="汎用">汎用</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>機械種別</label>
+          <input type="text" class="form-control" id="sMachineKind"
+                 list="kindList" placeholder="選択または入力">
+          <datalist id="kindList"></datalist>
+        </div>
+        <div class="form-group">
+          <label>端子種別</label>
+          <select class="form-control" id="sConnector">
+            <option value="">すべて</option>
+            <option value="RJ45">RJ45</option>
+            <option value="RS232C">RS232C</option>
+            <option value="その他">その他</option>
+            <option value="不明">不明（上記以外）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row-clear">
+        <div class="form-group">
+          <label>管理番号</label>
+          <div class="mid-row">
+            <select class="form-control prefix" id="sManagePrefix">
+              <option value="">すべて</option>
+              <option value="OK">OK</option>
+              <option value="MK">MK</option>
+              <option value="KO">KO</option>
+              <option value="YO">YO</option>
+              <option value="不明">不明</option>
+            </select>
+            <span class="sep" id="sManageSep">-</span>
+            <input type="text" class="form-control num" id="sManageText"
+                   placeholder="001" maxlength="3" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>形式等</label>
+          <input type="text" class="form-control" id="sModel" placeholder="部分一致">
+        </div>
+        <div class="form-group">
+          <label>特徴等</label>
+          <input type="text" class="form-control" id="sDescription"
+                 placeholder="部分一致で検索">
+        </div>
+        <button class="btn btn-outline btn-clear" onclick="clearSearch()">掃</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── List ──────────────────────────────────── -->
+  <div id="listSection" style="display:none">
+    <div class="list-toolbar">
+      <div class="toolbar-left">
+        <span class="list-count" id="countLabel">0 件</span>
+        <span class="filter-chip" id="filterChip" style="display:none">絞込中</span>
+        <button class="btn btn-light btn-xs" id="btnFilterJSON"
+                title="表示中のデータをJSONで保存" onclick="exportFilteredJSON()" style="display:none">↓JSON</button>
+        <button class="btn btn-light btn-xs" id="btnFilterCSV"
+                title="表示中のデータをCSVで保存" onclick="exportFilteredCSV()" style="display:none">↓CSV</button>
+      </div>
+      <button class="btn btn-success btn-sm" onclick="openAddModal()">＋ 追加</button>
+    </div>
+    <div class="machine-list" id="machineList"></div>
+  </div>
+
+</div><!-- /container -->
+
+
+<!-- ─── Edit / Add Modal ──────────────────────── -->
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="editTitle">機械を追加</span>
+      <button class="modal-close" onclick="closeModal('editOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editIdx">
+
+      <div class="form-group">
+        <label>場所 <span style="color:var(--danger)">*</span></label></label>
+        <select class="form-control-placement prefix" id="ePlacement">
+          <option value="">すべて</option>
+          <option value="本社">本社</option>
+          <option value="本社第二">本社第二</option>
+          <option value="八尾">八尾</option>
+          <option value="松阪">松阪</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>種別 <span style="color:var(--danger)">*</span></label>
+        <select class="form-control" id="eMachineType">
+          <option value="">選択してください</option>
+          <option value="NC">NC</option>
+          <option value="汎用">汎用</option>
+          <option value="その他">その他</option>
+        </select>
+        <div class="form-error" id="errType">種別を選択してください</div>
+      </div>
+
+      <div class="form-group">
+        <label>機械種別 <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-control" id="eMachineKind"
+               list="editKindList" placeholder="選択または入力">
+        <datalist id="editKindList"></datalist>
+        <div class="form-error" id="errKind">機械種別を入力してください</div>
+      </div>
+
+      <div class="form-group">
+        <label>管理番号 <span style="color:var(--danger)">*</span></label>
+        <div class="mid-row">
+          <select class="form-control prefix" id="eManagePrefix">
+            <option value="">選択</option>
+            <option value="OK">OK</option>
+            <option value="MK">MK</option>
+            <option value="KO">KO</option>
+            <option value="YO">YO</option>
+            <option value="不明">不明</option>
+          </select>
+          <span class="sep" id="eManageSep">-</span>
+          <input type="text" class="form-control num" id="eManageNum"
+                 placeholder="001" maxlength="3" inputmode="numeric">
+        </div>
+        <div class="form-hint">番号は3桁ゼロ埋めで自動補完（例: OK-001）</div>
+        <div class="form-error" id="errManage">管理番号を正しく入力してください</div>
+      </div>
+
+      <div class="form-group">
+        <label>形式等</label>
+        <textarea class="form-control" id="eModel" rows="2"
+                  style="min-height:auto" placeholder="形式等を入力"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>端子種別</label>
+        <select class="form-control" id="eConnector">
+          <option value="">未選択</option>
+          <option value="RJ45">RJ45</option>
+          <option value="RS232C">RS232C</option>
+          <option value="その他">その他</option>
+          <option value="不明">不明</option>
+          <option value="なし">なし</option>
+          <option value="未発見">未発見</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>特徴等</label>
+        <textarea class="form-control" id="eDescription"
+                  placeholder="特徴等を入力"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('editOverlay')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveItem()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Confirm Modal ─────────────────────────── -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <span class="modal-title" id="confirmTitle">確認</span>
+      <button class="modal-close" id="confirmCloseBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text" id="confirmText"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" id="confirmCancelBtn">キャンセル</button>
+      <button class="btn btn-danger" id="confirmOkBtn">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast ─────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+// ═══════════════════════════════════════════════════
+//  Storage keys
+// ═══════════════════════════════════════════════════
+const S_DATA  = 'mlData_v1';
+const S_DIRTY = 'mlDirty_v1';
+const S_FILE  = 'mlFile_v1';
+const S_SRC   = 'mlSource_v1';          // NEW: '' | 'server' | 'file'
+
+// サーバー固定データ（既定の読込元）
+const SERVER_URL  = 'data/machines.json';  // 相対 → / でも /index.html でも解決する
+const SERVER_NAME = 'machines.json';       // fileName に入れる名前（エクスポート名の元）
+
+// ═══════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════
+let allData      = [];    // source of truth (all records)
+let filteredData = [];    // currently displayed records
+let isDirty      = false; // unsaved changes since last export
+let fileName     = '';    // last loaded filename
+let dataSource   = '';    // '' | 'server' | 'file' — 現在のデータ取得元
+
+// ═══════════════════════════════════════════════════
+//  Boot
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  $('fileInput').addEventListener('change', onFileInputChange);
+
+  ['eManageNum', 'sManageText'].forEach(id => {
+    const el = $(id);
+    el.addEventListener('input', e => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 3);
+    });
+    el.addEventListener('blur', e => {
+      if (e.target.value.length > 0) {
+        e.target.value = e.target.value.padStart(3, '0');
+      }
+    });
+  });
+
+  // Auto-filter on every search field change
+  ['sPlacement', 'sMachineType', 'sManagePrefix', 'sConnector'].forEach(id =>
+    $(id).addEventListener('change', applySearch)
+  );
+  ['sMachineKind', 'sManageText', 'sModel', 'sDescription'].forEach(id =>
+    $(id).addEventListener('input', applySearch)
+  );
+
+  // Toggle sep/num visibility for 不明
+  $('sManagePrefix').addEventListener('change', () => toggleManageNum('s'));
+  $('eManagePrefix').addEventListener('change', () => toggleManageNum('e'));
+
+  loadFromStorage();   // 同期：前回セッションを即描画（体感速度のため）
+  bootServerLoad();    // 非同期：サーバー読込（dirty なら確認モーダル経由）
+});
+
+// ═══════════════════════════════════════════════════
+//  Persistence
+// ═══════════════════════════════════════════════════
+function persist() {
+  try {
+    localStorage.setItem(S_DATA,  JSON.stringify(allData));
+    localStorage.setItem(S_DIRTY, isDirty ? '1' : '0');
+    localStorage.setItem(S_FILE,  fileName);
+    localStorage.setItem(S_SRC, dataSource);
+  } catch (_) { /* quota exceeded */ }
+}
+
+function loadFromStorage() {
+  const raw = localStorage.getItem(S_DATA);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+    allData  = parsed;
+    isDirty  = localStorage.getItem(S_DIRTY) === '1';
+    fileName = localStorage.getItem(S_FILE) || '';
+    dataSource = localStorage.getItem(S_SRC) || '';
+
+    if (allData.length > 0 || fileName) {
+      const lbl = $('fileNameLabel');
+      lbl.innerHTML = fileName
+        ? `📄 ${esc(fileName)}（前回セッションより復元）`
+        : '（前回セッションより復元）';
+      lbl.style.display = '';
+      showSections();
+      syncKindLists();
+      updateDirtyUI();
+      applySearch();
+    }
+  } catch (_) { /* corrupt data – ignore */ }
+}
+
+// ═══════════════════════════════════════════════════
+//  Server loading (既定の読込元)
+// ═══════════════════════════════════════════════════
+
+// 起動時：常にサーバーを読む。ただし未エクスポートの変更がある場合のみ確認する。
+function bootServerLoad() {
+  if (!isDirty) { loadFromServer(); return; }
+
+  showConfirm(
+    `前回の変更がまだエクスポートされていません。\n` +
+    `サーバーの ${SERVER_NAME} を読み込むと、その変更は失われます。\n\n` +
+    `［OK］サーバーから読み込む　／　［キャンセル］前回の変更を残す`,
+    'エクスポート未完了',
+    // OK → サーバーで上書き
+    () => loadFromServer(),
+    // キャンセル → ローカルを維持。ここで必ず描画を保証する。
+    () => {
+      showSections();
+      syncKindLists();
+      updateDirtyUI();
+      applySearch();
+      const lbl = $('fileNameLabel');
+      lbl.innerHTML = `${dataSource === 'server' ? '🌐' : '📄'} ` +
+                      `${esc(fileName || 'データ')}（前回の変更を保持中・未エクスポート）`;
+      lbl.style.display = '';
+      showToast('前回の変更を保持しました（サーバー読込をキャンセル）');
+    }
+  );
+}
+
+// 手動：🔄 再読込ボタン。onFileInputChange と同じ dirty ガードの形。
+function reloadFromServer() {
+  if (isDirty) {
+    showConfirm(
+      `「${fileName || 'データ'}」の変更がまだエクスポートされていません。\n` +
+      `サーバーから再読込すると、その変更は失われます。続けますか？`,
+      'エクスポート未完了',
+      () => loadFromServer()
+    );
+  } else {
+    loadFromServer();
+  }
+}
+
+function loadFromServer() {
+  fetch(SERVER_URL, { cache: 'no-store' })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(parsed => {
+      if (!Array.isArray(parsed)) throw new Error('ルート要素が配列ではありません');
+
+      allData    = parsed.map(normalizeItem);
+      isDirty    = false;
+      fileName   = SERVER_NAME;
+      dataSource = 'server';
+
+      persist();
+      syncKindLists();
+      showSections();
+      clearSearch();
+      updateDirtyUI();
+      updateFileLabel();
+      showToast(`サーバーから ${allData.length} 件を読み込みました`);
+    })
+    .catch(err => onServerLoadError(err));
+}
+
+// 失敗時：絶対に「真っ白で手詰まり」にしない。
+function onServerLoadError(err) {
+  showToast('サーバー読込失敗: ' + err.message, true);
+
+  // 復元済みデータがあれば、それを維持したまま表示を継続する
+  if (allData.length > 0) {
+    showSections();
+    syncKindLists();
+    updateDirtyUI();
+    applySearch();
+    updateFileLabel();
+    return;
+  }
+
+  // データが皆無 → 空状態を必ず描画し、📂/🔄 で復帰できる旨を案内する
+  showSections();
+  syncKindLists();
+  updateDirtyUI();
+  clearSearch();          // filteredData=[] → renderList() が empty-state を出す
+  const lbl = $('fileNameLabel');
+  lbl.innerHTML = '⚠ サーバーからデータを読み込めませんでした。' +
+                  '［📂 ファイル選択］または［🔄 再読込］をお試しください。';
+  lbl.style.display = '';
+}
+
+function updateFileLabel() {
+  const lbl = $('fileNameLabel');
+  if (!fileName) { lbl.style.display = 'none'; return; }
+  lbl.innerHTML = dataSource === 'server'
+    ? `🌐 サーバー（${esc(fileName)}）`
+    : `📄 ${esc(fileName)}`;
+  lbl.style.display = '';
+}
+
+// ═══════════════════════════════════════════════════
+//  File loading
+// ═══════════════════════════════════════════════════
+function onFileInputChange(e) {
+  const file = e.target.files[0];
+  e.target.value = ''; // allow re-selecting same file
+  if (!file) return;
+
+  if (isDirty) {
+    showConfirm(
+      `「${fileName || 'データ'}」の変更がまだエクスポートされていません。\n` +
+      `新しいファイルを読み込むと変更が失われます。続けますか？`,
+      'エクスポート未完了',
+      () => readFile(file)
+    );
+  } else {
+    readFile(file);
+  }
+}
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!Array.isArray(parsed)) throw new Error('ルート要素が配列ではありません');
+
+      allData    = parsed.map(normalizeItem);
+      isDirty    = false;
+      fileName   = file.name;
+      dataSource = 'file';        // ← 📂 でファイルモードへ切り替わる
+
+      persist();
+      syncKindLists();
+      showSections();
+      clearSearch();
+      updateDirtyUI();
+      updateFileLabel();          // ← 旧: lbl.innerHTML = `📄 ...` の3行を置換
+      showToast(`${allData.length} 件を読み込みました`);
+    } catch (err) {
+      showToast('読み込み失敗: ' + err.message, true);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function normalizeItem(o) {
+  const s = v => (v == null ? '' : String(v));
+  return {
+    placement:   s(o.placement),
+    machineType: s(o.machineType),
+    machineKind: s(o.machineKind),
+    manageId:    s(o.manageId),
+    model:       s(o.model),
+    connector:   s(o.connector),
+    description: s(o.description),
+  };
+}
+
+// ═══════════════════════════════════════════════════
+//  Search
+// ═══════════════════════════════════════════════════
+function applySearch() {
+  const pl  = $('sPlacement').value;
+  const mt  = $('sMachineType').value;
+  const mk  = $('sMachineKind').value.trim();
+  const mp  = $('sManagePrefix').value;
+  const mt2 = $('sManageText').value.trim();
+  const mo  = $('sModel').value.trim();
+  const co  = $('sConnector').value;
+  const de  = $('sDescription').value.trim();
+
+  const connectorList = ["RS232C", "RJ45", "その他"];
+
+  filteredData = allData.filter(d => {
+    if (pl  && d.placement !== pl)                                        return false;
+    if (mt  && d.machineType !== mt)                                      return false;
+    if (mk  && d.machineKind !== mk)                                      return false;
+    if (mp === '不明' && d.manageId !== '不明')                            return false;
+    if (mp && mp !== '不明' && !d.manageId.startsWith(mp + '-'))           return false;
+    if (mt2 && mp !== '不明' && !d.manageId.includes(mt2))                 return false;
+    if (mo  && !d.model.includes(mo))                                      return false;
+    if (co && co !== '不明' && d.connector !== co)                          return false;
+    if (de  && !d.description.includes(de))                               return false;
+    if (co === '不明' && connectorList.includes(d.connector))             return false;
+    return true;
+  });
+
+  renderList();
+  persist(); // save on search event
+}
+
+function clearSearch() {
+  $('sPlacement').value = '';
+  $('sMachineType').value  = '';
+  $('sMachineKind').value  = '';
+  $('sManagePrefix').value = '';
+  $('sManageText').value   = '';
+  $('sModel').value        = '';
+  $('sConnector').value    = '';
+  $('sDescription').value  = '';
+  toggleManageNum('s');
+  filteredData = [...allData];
+  renderList();
+  persist();
+}
+
+// ═══════════════════════════════════════════════════
+//  Render
+// ═══════════════════════════════════════════════════
+function renderList() {
+  const list = $('machineList');
+  const isFiltered = filteredData.length < allData.length;
+  $('countLabel').textContent = `${filteredData.length} 件 / 全 ${allData.length} 件`;
+  $('filterChip').style.display   = isFiltered ? '' : 'none';
+  $('btnFilterJSON').style.display = isFiltered ? '' : 'none';
+  $('btnFilterCSV').style.display  = isFiltered ? '' : 'none';
+
+  if (filteredData.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div>表示できるデータがありません</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = filteredData.map(item => {
+    const realIdx = allData.indexOf(item);
+    const val = v => v
+      ? `<span class="mc-val">${esc(v)}</span>`
+      : `<span class="mc-val empty">—</span>`;
+    return `
+    <div class="mc">
+      <div class="mc-head">
+        <span class="mc-id"> ${esc(item.placement)} - ${esc(item.manageId) || '—'}</span>
+        <span class="mc-type">${esc(item.machineType) || '—'}</span>
+        <div class="mc-actions">
+          <button class="btn btn-light btn-xs" onclick="openEditModal(${realIdx})">編集</button>
+          <button class="btn btn-danger btn-xs" onclick="askDelete(${realIdx})">削除</button>
+        </div>
+      </div>
+      <div class="mc-body">
+        <span class="mc-lbl">機械種別</span>${val(item.machineKind)}
+        <span class="mc-lbl">形式等</span>${val(item.model)}
+        <span class="mc-lbl">端子種別</span>${val(item.connector)}
+        <span class="mc-lbl">特徴等</span>${val(item.description)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  Add / Edit
+// ═══════════════════════════════════════════════════
+function openAddModal() {
+  $('editTitle').textContent = '機械を追加';
+  $('editIdx').value         = '-1';
+  $('ePlacement').value      = $('sPlacement').value;
+  $('eMachineType').value    = '';
+  $('eMachineKind').value    = '';
+  $('eManagePrefix').value   = '';
+  $('eManageNum').value      = '';
+  $('eModel').value          = '';
+  $('eConnector').value      = '';
+  $('eDescription').value    = '';
+  toggleManageNum('e');
+  clearValidation();
+  openModal('editOverlay');
+}
+
+function openEditModal(idx) {
+  const item = allData[idx];
+  if (!item) return;
+
+  $('editTitle').textContent = '機械を編集';
+  $('editIdx').value         = String(idx);
+  $('ePlacement').value      = item.placement;
+  $('eMachineType').value    = item.machineType;
+  $('eMachineKind').value    = item.machineKind;
+  $('eModel').value          = item.model;
+  $('eConnector').value      = item.connector;
+  $('eDescription').value    = item.description;
+
+  if (item.manageId === '不明') {
+    $('eManagePrefix').value = '不明';
+    $('eManageNum').value    = '';
+  } else {
+    const m = item.manageId.match(/^([A-Z]+)-(\d+)$/);
+    $('eManagePrefix').value = m ? m[1] : '';
+    $('eManageNum').value    = m ? m[2] : item.manageId;
+  }
+  toggleManageNum('e');
+  clearValidation();
+  openModal('editOverlay');
+}
+
+function saveItem() {
+  const mPlc   = $('ePlacement').value;
+  const mType  = $('eMachineType').value.trim();
+  const mKind  = $('eMachineKind').value.trim();
+  const prefix = $('eManagePrefix').value;
+  const numRaw = $('eManageNum').value.trim();
+  const model  = $('eModel').value.trim();
+  const conn   = $('eConnector').value;
+  const desc   = $('eDescription').value.trim();
+  const idx    = parseInt($('editIdx').value, 10);
+
+  clearValidation();
+  let valid = true;
+
+  if (!mPlc)  { markInvalid('errType',   'ePlacement');  valid = false; }
+  if (!mType) { markInvalid('errType',   'eMachineType');  valid = false; }
+  if (!mKind) { markInvalid('errKind',   'eMachineKind');  valid = false; }
+  if (!prefix) {
+    markInvalid('errManage', 'eManagePrefix');
+    valid = false;
+  } else if (prefix !== '不明' && (!numRaw || !/^\d{1,3}$/.test(numRaw))) {
+    markInvalid('errManage', 'eManagePrefix');
+    valid = false;
+  }
+  if (!valid) return;
+
+  const manageId = prefix === '不明' ? '不明' : `${prefix}-${numRaw.padStart(3, '0')}`;
+
+  const dup = allData.findIndex((d, i) => d.manageId !== '不明' && d.manageId === manageId && i !== idx);
+  if (dup !== -1) {
+    $('errManage').textContent = `管理番号「${manageId}」はすでに存在します`;
+    markInvalid('errManage', 'eManagePrefix');
+    return;
+  }
+
+  const item = { placement: mPlc, machineType: mType, machineKind: mKind, manageId, model, connector: conn, description: desc };
+
+  if (idx === -1) {
+    allData.push(item);
+  } else {
+    allData[idx] = item;
+  }
+
+  markDirty();
+  syncKindLists();
+  applySearch();
+  closeModal('editOverlay');
+  showToast(idx === -1 ? '追加しました' : '更新しました');
+}
+
+// ═══════════════════════════════════════════════════
+//  Delete
+// ═══════════════════════════════════════════════════
+function askDelete(idx) {
+  const item = allData[idx];
+  if (!item) return;
+  showConfirm(
+    `「${item.manageId}」を削除しますか？\nこの操作は元に戻せません。`,
+    '削除の確認',
+    () => {
+      allData.splice(idx, 1);
+      markDirty();
+      syncKindLists();
+      applySearch();
+      showToast('削除しました');
+    }
+  );
+}
+
+// ═══════════════════════════════════════════════════
+//  Export
+// ═══════════════════════════════════════════════════
+function exportJSON() {
+  download(
+    JSON.stringify(allData, null, 2),
+    buildExportName('json'),
+    'application/json'
+  );
+  clearDirty();
+  showToast('JSONファイルを保存しました');
+}
+
+function exportCSV() {
+  const FIELDS = ['placement','machineType','machineKind','manageId','model','connector','description'];
+  const LABELS = ['場所','種別','機械種別','管理番号','形式等','端子種別','特徴等'];
+
+  const rows = allData.map(item =>
+    FIELDS.map(f => csvCell(item[f] || '')).join(',')
+  );
+
+  // BOM for Excel UTF-8 compatibility
+  download(
+    '﻿' + LABELS.join(',') + '\n' + rows.join('\n'),
+    buildExportName('csv'),
+    'text/csv;charset=utf-8'
+  );
+  clearDirty();
+  showToast('CSVファイルを保存しました');
+}
+
+function exportFilteredJSON() {
+  download(
+    JSON.stringify(filteredData, null, 2),
+    buildExportName('json', true),
+    'application/json'
+  );
+  showToast(`表示中 ${filteredData.length} 件をJSONで保存しました`);
+}
+
+function exportFilteredCSV() {
+  const FIELDS = ['placement','machineType','machineKind','manageId','model','connector','description'];
+  const LABELS = ['場所','種別','機械種別','管理番号','形式等','端子種別','特徴等'];
+  const rows = filteredData.map(item =>
+    FIELDS.map(f => csvCell(item[f] || '')).join(',')
+  );
+  download(
+    '﻿' + LABELS.join(',') + '\n' + rows.join('\n'),
+    buildExportName('csv', true),
+    'text/csv;charset=utf-8'
+  );
+  showToast(`表示中 ${filteredData.length} 件をCSVで保存しました`);
+}
+
+function csvCell(v) {
+  const s = String(v);
+  return (s.includes(',') || s.includes('\n') || s.includes('"'))
+    ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function buildExportName(ext, filtered = false) {
+  const base   = fileName.replace(/\.json$/i, '') || 'machines';
+  const n      = new Date();
+  const ts     = `${n.getFullYear()}${p2(n.getMonth()+1)}${p2(n.getDate())}_${p2(n.getHours())}${p2(n.getMinutes())}`;
+  const suffix = filtered ? '_filtered' : '';
+  return `${base}${suffix}_${ts}.${ext}`;
+}
+
+function download(content, name, type) {
+  const blob = new Blob([content], { type });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: name });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════
+//  Dirty state
+// ═══════════════════════════════════════════════════
+function markDirty()  { isDirty = true;  updateDirtyUI(); persist(); }
+function clearDirty() { isDirty = false; updateDirtyUI(); persist(); }
+function updateDirtyUI() {
+  $('dirtyChip').style.display = isDirty ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════
+//  UI helpers
+// ═══════════════════════════════════════════════════
+function showSections() {
+  $('searchCard').style.display  = '';
+  $('listSection').style.display = '';
+}
+
+function toggleSearch() {
+  const body   = $('searchBody');
+  const header = $('searchHeader');
+  const arrow  = $('searchArrow');
+  const open   = body.classList.toggle('open');
+  header.classList.toggle('open', open);
+  arrow.textContent = open ? '▲' : '▼';
+}
+
+function toggleManageNum(prefix) {
+  const isUnknown = $(`${prefix}ManagePrefix`).value === '不明';
+  $(`${prefix}ManageSep`).style.display  = isUnknown ? 'none' : '';
+  const numEl = $(prefix === 'e' ? 'eManageNum' : 'sManageText');
+  numEl.style.display = isUnknown ? 'none' : '';
+  if (isUnknown) numEl.value = '';
+}
+
+function syncKindLists() {
+  const kinds = [...new Set(allData.map(d => d.machineKind).filter(Boolean))].sort();
+  const opts  = kinds.map(k => `<option value="${esc(k)}">`).join('');
+  $('kindList').innerHTML     = opts;
+  $('editKindList').innerHTML = opts;
+}
+
+// ── Modal ────────────────────────────────────────
+function openModal(id) {
+  $(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  $(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function showConfirm(text, title, onOk, onCancel) {
+  $('confirmText').textContent  = text;
+  $('confirmTitle').textContent = title || '確認';
+  const done = cb => () => { closeModal('confirmOverlay'); if (cb) cb(); };
+  $('confirmOkBtn').onclick     = done(onOk);
+  $('confirmCancelBtn').onclick = done(onCancel);
+  $('confirmCloseBtn').onclick  = done(onCancel);
+  openModal('confirmOverlay');
+}
+
+// ── Validation ───────────────────────────────────
+function markInvalid(errId, fieldId) {
+  const e = $(errId);   if (e) e.classList.add('show');
+  const f = $(fieldId); if (f) f.classList.add('invalid');
+}
+function clearValidation() {
+  document.querySelectorAll('.form-error').forEach(e => {
+    e.classList.remove('show');
+    if (e.id === 'errManage') e.textContent = '管理番号を正しく入力してください';
+  });
+  document.querySelectorAll('.form-control.invalid').forEach(e => e.classList.remove('invalid'));
+}
+
+// ── Toast ────────────────────────────────────────
+let _toastTimer;
+function showToast(msg, isError = false) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className   = 'toast' + (isError ? ' error' : '');
+  void t.offsetWidth; // force reflow for retrigger
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ═══════════════════════════════════════════════════
+//  Utilities
+// ═══════════════════════════════════════════════════
+const $   = id => document.getElementById(id);
+const p2  = n  => String(n).padStart(2, '0');
+const esc = s  => String(s ?? '')
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+</script>
+</body>
+</html>
