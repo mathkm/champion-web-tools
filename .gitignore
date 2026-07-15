@@ -1,4 +1,4 @@
 .claude/*
 data/*
-ampere/data/*
-machines/data/*
+# ampere/data/*
+# machines/data/*
