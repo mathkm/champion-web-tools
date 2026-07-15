@@ -7,5 +7,5 @@ services:
     volumes:
       - ./html:/usr/share/nginx/html:ro
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - /opt/machine-tool-info-collect-server_mqtt_info:/usr/share/nginx/html/data/ampere:ro   # 収集サーバーの書き込み先を read-only 配信
+      - /opt/machine-tool-info-collect-server_mqtt_info:/usr/share/nginx/html/ampere/data:ro   # 収集サーバーの書き込み先を read-only 配信
     restart: unless-stopped

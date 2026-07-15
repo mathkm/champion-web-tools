@@ -276,7 +276,7 @@
   // ファイル名の自然順ソート用（数字を数値として比較。file2 < file10）
   const NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-  const DATA_BASE = '/data/ampere/';           // nginx が配信するデータディレクトリ（絶対パス。/realtime/ 配下でも常に /data/ampere/ を指す）
+  const DATA_BASE = '/ampere/data/';           // nginx が配信するデータディレクトリ（絶対パス。/realtime/ 配下でも常に /data/ampere/ を指す）
   let POLL_INTERVAL_MS = 10000;         // 更新間隔（UIで変更可）
 
   // ---- 状態 ----
