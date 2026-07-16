@@ -553,14 +553,15 @@
   // 4. ダウンサンプリング
   // =========================================================
   function downsample(arr) {
-    const n = arr.length;
-    if (n <= MAX_POINTS) return arr;
-    const step = Math.ceil(n / MAX_POINTS);
-    const out = [];
-    for (let i = 0; i < n; i += step) out.push(arr[i]);
-    // 最後の点は必ず含める(グラフの端が欠けないように)
-    if (out[out.length - 1] !== arr[n - 1]) out.push(arr[n - 1]);
-    return out;
+    return arr;
+    // const n = arr.length;
+    // if (n <= MAX_POINTS) return arr;
+    // const step = Math.ceil(n / MAX_POINTS);
+    // const out = [];
+    // for (let i = 0; i < n; i += step) out.push(arr[i]);
+    // // 最後の点は必ず含める(グラフの端が欠けないように)
+    // if (out[out.length - 1] !== arr[n - 1]) out.push(arr[n - 1]);
+    // return out;
   }
 
   // =========================================================
