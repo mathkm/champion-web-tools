@@ -269,6 +269,9 @@
   const MAX_POINTS = 25000; // 表示粒度を約5倍に(1チャンネルあたり最大プロット点数)
   const INTEGRAL_GAP_THRESHOLD_MS = 60 * 1000; // 60秒を超えるdtは積算から除外
 
+  const INITIAL_WINDOW_DAYS = 7;                 // 初期読込ウィンドウ(現在日時からの遡り日数)
+  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})\.csv$/i;
+
   // sensor_type="1"（電流）のみ対象。sensor_no → 表示チャンネル。要確認(前提B/C)。
   const CURRENT_SENSOR_TYPE = "1";
   const SENSOR_NO_TO_CH = { 1: 'ch0', 2: 'ch1' };
@@ -288,6 +291,10 @@
   let liveFollow = true;
   let pollTimer = null;
   let polling = false;  // 多重実行防止
+
+  // これより新しいデータのみ読み込む下限。過去日を指定されたら過去方向へ広げる(縮めない)。
+  let loadWindowStartMs = Date.now() - INITIAL_WINDOW_DAYS * 24 * 3600 * 1000;
+  let backfillPending = false;   // ポーリング実行中に遡り要求が来た場合の持ち越し
 
   // ---- DOM参照 ----
   const statusText = document.getElementById('statusText');
@@ -348,6 +355,14 @@
     return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s || 0));
   }
 
+  // ファイル名 (YYYYMMDD_HHMMSS_mmm.csv) からその先頭行の受信日時と一致する開始時刻を得る
+  function parseFileStartTime(name) {
+    const m = FILENAME_TS_RE.exec(name);
+    if (!m) return null;
+    const [, y, mo, d, h, mi, s, ms] = m;
+    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s), Number(ms));
+  }
+
   // =========================================================
   // 2. CSV行の分類（旧定義/新定義 両対応。D&D版と同一ロジック）
   // =========================================================
@@ -398,6 +413,21 @@
     return arr.filter(e => e.type === 'file' && /\.csv$/i.test(e.name));
   }
 
+  // 各ファイルの守備範囲を [自身の開始時刻, 次ファイルの開始時刻) とみなし、
+  // windowStartMs 以降のデータを含みうるファイルだけを返す。
+  // 入力は名前昇順にソート済みの配列であること。
+  function selectFilesInWindow(sortedFiles, windowStartMs) {
+    const out = [];
+    for (let i = 0; i < sortedFiles.length; i++) {
+      const start = parseFileStartTime(sortedFiles[i].name);
+      if (!start) { out.push(sortedFiles[i]); continue; }  // 命名規則外は判定不能。取りこぼさぬよう取り込む
+      const next = i + 1 < sortedFiles.length ? parseFileStartTime(sortedFiles[i + 1].name) : null;
+      const coverEndMs = next ? next.getTime() : Infinity; // 最新ファイルは現在まで伸びている
+      if (coverEndMs > windowStartMs) out.push(sortedFiles[i]);
+    }
+    return out;
+  }
+
   async function ingestChunk(name, fromByte) {
     const url = DATA_BASE + encodeURIComponent(name);
     const opt = { cache: 'no-store' };
@@ -437,8 +467,9 @@
     try {
       const files = await fetchListing();
       files.sort((a, b) => NAME_COLLATOR.compare(a.name, b.name)); // 古い順に取り込む
+      const targets = selectFilesInWindow(files, loadWindowStartMs);
       let added = 0;
-      for (const f of files) {
+      for (const f of targets) {
         const seen = fileState[f.name] ? fileState[f.name].offset : 0;
         if (f.size > seen) {
           added += await ingestChunk(f.name, seen);
@@ -457,7 +488,8 @@
       setStatus('error', e);
     } finally {
       polling = false;
-      scheduleNext();
+      if (backfillPending) { backfillPending = false; poll(); }
+      else scheduleNext();
     }
   }
 
@@ -466,8 +498,17 @@
     pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
   }
 
+  function requestBackfill(start) {
+    if (!start || start.getTime() >= loadWindowStartMs) return; // 既にカバー済み
+    loadWindowStartMs = start.getTime();
+    if (polling) { backfillPending = true; return; }  // 実行中のポーリング完了後に回す
+    setStatus('loading');
+    poll();
+  }
+
   function setStatus(kind, err) {
     statusText.classList.remove('ok', 'error');
+    if (kind === 'loading') { statusText.textContent = '過去データ読込中…'; return; }
     if (kind === 'ok') {
       statusText.classList.add('ok');
       statusText.textContent = '接続OK';
@@ -756,6 +797,7 @@
     if (!end) end = dataEndT();
     if (start.getTime() > end.getTime()) return; // 不正な範囲は無視
     setRange(start, end, 'input');
+    requestBackfill(start);
   }
   rangeStartInput.addEventListener('change', onRangeInputChange);
   rangeEndInput.addEventListener('change', onRangeInputChange);
