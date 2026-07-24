@@ -216,9 +216,9 @@
 
   <section class="panel">
     <h2>データ読み込み</h2>
-    <button id="selectBtn" type="button">CSVファイルを選択(複数可)</button>
-    <input id="fileInput" type="file" accept=".csv" multiple>
-    <div class="hint">またはページのどこにでもCSVをドラッグ＆ドロップ</div>
+    <button id="selectBtn" type="button">ファイルを選択(CSV / JSONL, 複数可)</button>
+    <input id="fileInput" type="file" accept=".csv,.jsonl,.json" multiple>
+    <div class="hint">またはページのどこにでもCSV / JSONLをドラッグ＆ドロップ</div>
     <div id="fileSummary" class="hidden">
       <span class="badge" id="badgeFiles">ファイル: 0</span>
       <span class="badge" id="badgeRows">読込点数: 0</span>
@@ -230,7 +230,7 @@
 
   <section class="panel">
     <h2>統計サマリ</h2>
-    <div id="statsEmpty" class="empty-state">CSVを読み込んでください</div>
+    <div id="statsEmpty" class="empty-state">ファイルを読み込んでください</div>
     <div id="statsContent" class="hidden">
       <div id="rangeControls">
         <label>開始 <input type="datetime-local" id="rangeStart" step="1"></label>
@@ -266,13 +266,13 @@
 
   <section class="panel">
     <h2>時系列グラフ(電流 [A])</h2>
-    <div id="chartEmpty" class="empty-state">CSVを読み込んでください</div>
+    <div id="chartEmpty" class="empty-state">ファイルを読み込んでください</div>
     <div id="chart" class="hidden"></div>
   </section>
 
 </main>
 
-<div id="dropOverlay" class="hidden"><div class="drop-msg">CSVをドロップして読み込み</div></div>
+<div id="dropOverlay" class="hidden"><div class="drop-msg">CSV / JSONLをドロップして読み込み</div></div>
 
 <script>
 (function () {
@@ -333,6 +333,19 @@
     );
   }
 
+  // 受信日時のパース。CSVの `YYYY/MM/DD HH:MM:SS.mmm`(ローカル)と
+  // jsonl の ISO 8601(タイムゾーン付き, 例 2026-07-24T15:00:00.232+09:00)の両対応。
+  function parseReceivedTime(str) {
+    if (typeof str !== 'string') return null;
+    const s = str.trim();
+    if (s === '') return null;
+    const legacy = parseDateTime(s);
+    if (legacy) return legacy;
+    // ISO 8601(オフセット付き)は new Date で規格上一意に解釈できる
+    const iso = new Date(s);
+    return isNaN(iso.getTime()) ? null : iso;
+  }
+
   // ローカル時刻の文字列変換(toISOString()はUTC変換されるため使用しない)
   const LOCAL_INPUT_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
@@ -350,75 +363,101 @@
   }
 
   // =========================================================
-  // 2. CSVファイル → レコード配列 (§2.1, §2.3, §3.1)
+  // 2. ファイル → レコード配列 (CSV / JSONL 両対応)
   // =========================================================
-  function parseCsvFile(file) {
-    return new Promise((resolve) => {
-      Papa.parse(file, {
-        header: false,
-        skipEmptyLines: true,
-        complete: function (results) {
-          const rows = results.data;
-          const out = { ch0: [], ch1: [] };
-          let skipped = 0;
 
-          for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            if (!row || row.length < 3) { skipped++; continue; }
+  // payload(オブジェクト)を旧定義/新定義に応じて ch0/ch1 へ振り分ける。
+  // 採用できた値が1つでもあれば true。
+  function classifyPayload(t, payload, out) {
+    if (!payload || typeof payload !== 'object') return false;
+    let used = false;
+    if ('ch0_A' in payload || 'ch1_A' in payload) {
+      // 旧定義: 1行に両チャンネル
+      const ch0 = Number(payload.ch0_A);
+      const ch1 = Number(payload.ch1_A);
+      if (Number.isFinite(ch0)) { out.ch0.push({ t: t, v: ch0 }); used = true; }
+      if (Number.isFinite(ch1)) { out.ch1.push({ t: t, v: ch1 }); used = true; }
+    } else if ('sensor_type' in payload && 'value' in payload) {
+      // 新定義(machine.md): 1行1センサ1値
+      if (String(payload.sensor_type) === CURRENT_SENSOR_TYPE) {
+        const ch = SENSOR_NO_TO_CH[Number(payload.sensor_no)];
+        const v = Number(payload.value);
+        if (ch && Number.isFinite(v)) { out[ch].push({ t: t, v: v }); used = true; }
+      }
+    }
+    return used;
+  }
 
-            const t = parseDateTime(row[0]);
-            if (!t) {
-              // ヘッダー行 or パース不能行
-              skipped++;
-              continue;
-            }
+  // CSV 1行(3列以上: [受信日時, topic, payload(JSON文字列)])を振り分け
+  function classifyCsvRow(row, out) {
+    if (!row || row.length < 3) return false;
+    const t = parseReceivedTime(row[0]);
+    if (!t) return false; // ヘッダー行 or パース不能行
+    let payload;
+    try { payload = JSON.parse(row[2]); } catch (e) { return false; }
+    return classifyPayload(t, payload, out);
+  }
 
-            let payload;
-            try {
-              payload = JSON.parse(row[2]);
-            } catch (e) {
-              skipped++;
-              continue;
-            }
+  // JSONL 1行({ ingest_t, topic, payload })を振り分け。
+  // payload は JSON文字列 / オブジェクトのどちらでも受ける。
+  function classifyJsonlLine(line, out) {
+    let obj;
+    try { obj = JSON.parse(line); } catch (e) { return false; }
+    if (!obj || typeof obj !== 'object') return false;
+    const t = parseReceivedTime(obj.ingest_t);
+    if (!t) return false;
+    let payload = obj.payload;
+    if (typeof payload === 'string') {
+      try { payload = JSON.parse(payload); } catch (e) { return false; }
+    }
+    return classifyPayload(t, payload, out);
+  }
 
-            let usedThisRow = false;
+  // 先頭の非空行が '{' で始まれば JSONL とみなす(同一ファイル内は同一形式が前提)
+  function looksLikeJsonl(text) {
+    const re = /^\s*(?:﻿)?\s*(\S)/;  // 先頭の空白/BOMを飛ばして最初の可視文字
+    const m = re.exec(text);
+    return !!m && m[1] === '{';
+  }
 
-            if ('ch0_A' in payload || 'ch1_A' in payload) {
-              // 旧定義: 1行に両チャンネル
-              const ch0 = Number(payload.ch0_A);
-              const ch1 = Number(payload.ch1_A);
-              if (Number.isFinite(ch0)) { out.ch0.push({ t: t, v: ch0 }); usedThisRow = true; }
-              if (Number.isFinite(ch1)) { out.ch1.push({ t: t, v: ch1 }); usedThisRow = true; }
-            } else if ('sensor_type' in payload && 'value' in payload) {
-              // 新定義(machine.md): 1行1センサ1値
-              if (String(payload.sensor_type) === CURRENT_SENSOR_TYPE) {
-                const ch = SENSOR_NO_TO_CH[Number(payload.sensor_no)];
-                const v = Number(payload.value);
-                if (ch && Number.isFinite(v)) { out[ch].push({ t: t, v: v }); usedThisRow = true; }
-              }
-            }
+  // テキスト全体を CSV/JSONL 自動判別して振り分け
+  function classifyText(text) {
+    const out = { ch0: [], ch1: [] };
+    let used = 0, skipped = 0;
+    if (looksLikeJsonl(text)) {
+      const lines = text.split(/\r?\n/);
+      for (const line of lines) {
+        if (line.trim() === '') continue;
+        if (classifyJsonlLine(line, out)) used++; else skipped++;
+      }
+    } else {
+      const parsed = Papa.parse(text, { header: false, skipEmptyLines: true });
+      for (const row of parsed.data) {
+        if (classifyCsvRow(row, out)) used++; else skipped++;
+      }
+    }
+    return { ch0: out.ch0, ch1: out.ch1, rowCount: out.ch0.length + out.ch1.length, skipped: skipped };
+  }
 
-            if (!usedThisRow) skipped++;
-          }
-
-          resolve({ ch0: out.ch0, ch1: out.ch1, rowCount: out.ch0.length + out.ch1.length, skipped: skipped });
-        },
-        error: function () {
-          resolve({ ch0: [], ch1: [], rowCount: 0, skipped: (results && results.data ? results.data.length : 0) });
-        }
-      });
-    });
+  async function parseFile(file) {
+    let text;
+    try {
+      text = await file.text();
+    } catch (e) {
+      return { ch0: [], ch1: [], rowCount: 0, skipped: 0 };
+    }
+    return classifyText(text);
   }
 
   // =========================================================
   // 3. マージ & ソート (§3.1)
   // =========================================================
   async function handleFiles(fileList) {
-    const files = Array.from(fileList).filter(f => /\.csv$/i.test(f.name));
+    const files = Array.from(fileList).filter(f => /\.(csv|jsonl|json)$/i.test(f.name));
     if (files.length === 0) return;
 
     for (const file of files) {
-      const result = await parseCsvFile(file);
+      const result = await parseFile(file);
       series.ch0 = series.ch0.concat(result.ch0);
       series.ch1 = series.ch1.concat(result.ch1);
       loadedFiles.push({ name: file.name, rowCount: result.rowCount, skipped: result.skipped });

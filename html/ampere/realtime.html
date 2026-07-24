@@ -270,7 +270,7 @@
   const INTEGRAL_GAP_THRESHOLD_MS = 60 * 1000; // 60秒を超えるdtは積算から除外
 
   const INITIAL_WINDOW_DAYS = 7;                 // 初期読込ウィンドウ(現在日時からの遡り日数)
-  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})\.csv$/i;
+  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})\.(?:csv|jsonl)$/i;
 
   // sensor_type="1"（電流）のみ対象。sensor_no → 表示チャンネル。要確認(前提B/C)。
   const CURRENT_SENSOR_TYPE = "1";
@@ -339,6 +339,19 @@
     );
   }
 
+  // 受信日時のパース。CSVの `YYYY/MM/DD HH:MM:SS.mmm`(ローカル)と
+  // jsonl の ISO 8601(タイムゾーン付き, 例 2026-07-24T15:00:00.232+09:00)の両対応。
+  function parseReceivedTime(str) {
+    if (typeof str !== 'string') return null;
+    const s = str.trim();
+    if (s === '') return null;
+    const legacy = parseDateTime(s);
+    if (legacy) return legacy;
+    // ISO 8601(オフセット付き)は new Date で規格上一意に解釈できる
+    const iso = new Date(s);
+    return isNaN(iso.getTime()) ? null : iso;
+  }
+
   // ローカル時刻の文字列変換(toISOString()はUTC変換されるため使用しない)
   const LOCAL_INPUT_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
@@ -364,16 +377,12 @@
   }
 
   // =========================================================
-  // 2. CSV行の分類（旧定義/新定義 両対応。D&D版と同一ロジック）
+  // 2. 行の分類（CSV / JSONL 両対応、旧定義/新定義 両対応。D&D版と同一ロジック）
   // =========================================================
-  function classifyRow(row, out) {
-    if (!row || row.length < 3) return false;
-    const t = parseDateTime(row[0]);
-    if (!t) return false; // ヘッダ/不正行
 
-    let payload;
-    try { payload = JSON.parse(row[2]); } catch (e) { return false; }
-
+  // payload(オブジェクト)を旧定義/新定義に応じて ch0/ch1 へ振り分ける
+  function classifyPayload(t, payload, out) {
+    if (!payload || typeof payload !== 'object') return false;
     let used = false;
     if ('ch0_A' in payload || 'ch1_A' in payload) {
       // 旧定義: 1行に両チャンネル
@@ -392,13 +401,52 @@
     return used;
   }
 
+  // CSV 1行([受信日時, topic, payload(JSON文字列)])を振り分け
+  function classifyRow(row, out) {
+    if (!row || row.length < 3) return false;
+    const t = parseReceivedTime(row[0]);
+    if (!t) return false; // ヘッダ/不正行
+    let payload;
+    try { payload = JSON.parse(row[2]); } catch (e) { return false; }
+    return classifyPayload(t, payload, out);
+  }
+
+  // JSONL 1行({ ingest_t, topic, payload })を振り分け。
+  // payload は JSON文字列 / オブジェクトのどちらでも受ける。
+  function classifyJsonlLine(line, out) {
+    let obj;
+    try { obj = JSON.parse(line); } catch (e) { return false; }
+    if (!obj || typeof obj !== 'object') return false;
+    const t = parseReceivedTime(obj.ingest_t);
+    if (!t) return false;
+    let payload = obj.payload;
+    if (typeof payload === 'string') {
+      try { payload = JSON.parse(payload); } catch (e) { return false; }
+    }
+    return classifyPayload(t, payload, out);
+  }
+
+  // 先頭の非空行が '{' で始まれば JSONL とみなす(同一チャンク内は同一形式が前提)
+  function looksLikeJsonl(text) {
+    const m = /\S/.exec(text);
+    return !!m && m[0] === '{';
+  }
+
+  // テキスト(チャンク全体)を CSV/JSONL 自動判別して振り分け
   function classifyCsvText(text) {
     const out = { ch0: [], ch1: [] };
     let used = 0, skipped = 0;
-    const parsed = Papa.parse(text, { header: false, skipEmptyLines: true });
-    for (const row of parsed.data) {
-      if (classifyRow(row, out)) used++;
-      else skipped++;
+    if (looksLikeJsonl(text)) {
+      const lines = text.split(/\r?\n/);
+      for (const line of lines) {
+        if (line.trim() === '') continue;
+        if (classifyJsonlLine(line, out)) used++; else skipped++;
+      }
+    } else {
+      const parsed = Papa.parse(text, { header: false, skipEmptyLines: true });
+      for (const row of parsed.data) {
+        if (classifyRow(row, out)) used++; else skipped++;
+      }
     }
     return { ch0: out.ch0, ch1: out.ch1, used: used, skipped: skipped };
   }
@@ -410,7 +458,7 @@
     const res = await fetch(DATA_BASE + '?_=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('listing HTTP ' + res.status);
     const arr = await res.json();
-    return arr.filter(e => e.type === 'file' && /\.csv$/i.test(e.name));
+    return arr.filter(e => e.type === 'file' && /\.(csv|jsonl)$/i.test(e.name));
   }
 
   // 各ファイルの守備範囲を [自身の開始時刻, 次ファイルの開始時刻) とみなし、
