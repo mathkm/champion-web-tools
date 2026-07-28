@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RS-232C加工サイクル可視化(八尾/リアルタイム版)</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel-bg: #ffffff;
+    --border: #d8dbe0;
+    --text: #222;
+    --muted: #666;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .app-title {
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .panel h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  #sourceControls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px;
+  }
+  #sourceControls .status { font-weight: 600; }
+  #sourceControls .status.ok { color: #2e7d32; }
+  #sourceControls .status.error { color: #b3261e; }
+  #sourceControls .muted-inline { color: var(--muted); font-size: 12px; }
+
+  .machine-select-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  #machineSelect {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    max-width: 320px;
+  }
+
+  #fileInfo {
+    margin-top: 14px;
+    font-size: 13px;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+  #fileSummary {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    font-size: 13px;
+  }
+  #fileSummary .badge {
+    background: #eef1f5;
+    border-radius: 4px;
+    padding: 4px 10px;
+  }
+  #fileSummary .badge.warn {
+    background: #fdecea;
+    color: #b3261e;
+  }
+
+  #rangeControls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+  }
+  #rangeControls label, .filter-row label {
+    font-size: 12px;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  #rangeControls input[type="datetime-local"] {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  #rangeControls .preset-group {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  #rangeControls .preset-group button {
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    font-size: 12px;
+  }
+  .filter-row input[type="number"] {
+    width: 90px;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .filter-row .note { color: var(--muted); }
+
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+  }
+  button:hover { background: #f0f1f3; }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+    font-size: 14px;
+  }
+  .hidden { display: none !important; }
+
+  #cycleScatterChart { width: 100%; height: 360px; }
+  #ganttChart { width: 100%; height: 240px; }
+  #histChart { width: 100%; height: 240px; }
+  #hourlyChart { width: 100%; height: 220px; }
+  #statusChart { width: 100%; height: 220px; }
+  #errorChart { width: 100%; height: 220px; }
+
+  .stat-grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+  }
+  .stat-card h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+  .stat-card .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 2px 0;
+  }
+  .stat-card .stat-row span:first-child { color: var(--muted); }
+  .stat-card .stat-row span:last-child { font-variant-numeric: tabular-nums; }
+
+  .quality-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .quality-summary .badge { background: #eef1f5; border-radius: 4px; padding: 4px 10px; }
+  .quality-summary .badge.warn { background: #fdecea; color: #b3261e; }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.data-table td, table.data-table th {
+    text-align: left;
+    padding: 4px 6px;
+    border-bottom: 1px solid #eee;
+    white-space: nowrap;
+  }
+  table.data-table thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+  }
+  .table-scroll { max-height: 280px; overflow-y: auto; overflow-x: auto; }
+
+  .sub-heading { font-size: 13px; color: var(--muted); margin: 18px 0 8px; }
+
+  @media (max-width: 900px) {
+    .stat-grid3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-title">RS-232C加工サイクル可視化(八尾/リアルタイム版)</div>
+
+<main>
+
+  <section class="panel">
+    <h2>データソース(自動更新)</h2>
+    <div id="sourceControls">
+      <span id="statusText" class="status">接続中…</span>
+      <span id="lastUpdated" class="muted-inline"></span>
+      <label><input type="checkbox" id="liveFollowChk" checked> ライブ追従</label>
+      <label>更新間隔
+        <select id="intervalSel">
+          <option value="5000">5秒</option>
+          <option value="10000" selected>10秒</option>
+          <option value="30000">30秒</option>
+          <option value="60000">60秒</option>
+        </select>
+      </label>
+      <span class="machine-select-wrap hidden" id="machineSelectWrap">
+        機械
+        <select id="machineSelect"></select>
+      </span>
+    </div>
+    <div id="fileSummary" class="hidden">
+      <span class="badge" id="badgeFiles">ファイル: 0</span>
+      <span class="badge" id="badgeAdopted">採用行数: 0</span>
+      <span class="badge warn hidden" id="badgeUnmatched">対象外: 0</span>
+      <span class="badge warn hidden" id="badgeUnparsable">解析不能: 0</span>
+    </div>
+    <div id="fileInfo"></div>
+  </section>
+
+  <section class="panel">
+    <h2>表示期間・フィルタ</h2>
+    <div id="rangeControls">
+      <label>開始 <input type="datetime-local" id="rangeStart" step="1"></label>
+      <label>終了 <input type="datetime-local" id="rangeEnd" step="1"></label>
+      <span class="preset-group">
+        <button type="button" data-preset="all">全期間</button>
+        <button type="button" data-preset="1h">直近1時間</button>
+        <button type="button" data-preset="6h">直近6時間</button>
+        <button type="button" data-preset="24h">直近24時間</button>
+      </span>
+    </div>
+    <div class="filter-row">
+      <label>加工時間 下限[秒] <input type="number" id="filterMin" step="0.01" min="0" placeholder="なし"></label>
+      <label>上限[秒] <input type="number" id="filterMax" step="0.01" min="0" placeholder="なし"></label>
+      <span class="note">既定は空(全件表示)。統計・ヒストグラム・推移グラフに適用されます。</span>
+      <span class="note" id="filterExcludedNote"></span>
+    </div>
+  </section>
+
+  <section class="panel cycle-gate">
+    <h2>サイクルタイム推移</h2>
+    <div class="empty-state">データを取得しています…</div>
+    <div class="cycle-content hidden">
+      <div id="cycleScatterEmpty" class="empty-state hidden">表示対象のサイクルがありません</div>
+      <div id="cycleScatterChart"></div>
+    </div>
+  </section>
+
+  <section class="panel cycle-gate">
+    <h2>稼働タイムライン(ガント)</h2>
+    <div class="empty-state">データを取得しています…</div>
+    <div class="cycle-content hidden">
+      <div id="ganttEmpty" class="empty-state hidden">表示対象の区間がありません</div>
+      <div id="ganttChart"></div>
+    </div>
+  </section>
+
+  <section class="panel cycle-gate">
+    <h2>統計サマリ・分布</h2>
+    <div class="empty-state">データを取得しています…</div>
+    <div class="cycle-content hidden">
+      <div class="stat-grid3">
+        <div class="stat-card">
+          <h3>加工時間(完了サイクル)</h3>
+          <div class="stat-row"><span>完了サイクル数</span><span id="statCount">-</span></div>
+          <div class="stat-row"><span>中央値[秒]</span><span id="statMedian">-</span></div>
+          <div class="stat-row"><span>P10[秒]</span><span id="statP10">-</span></div>
+          <div class="stat-row"><span>P90[秒]</span><span id="statP90">-</span></div>
+          <div class="stat-row"><span>平均[秒]</span><span id="statMean">-</span></div>
+          <div class="stat-row"><span>標準偏差[秒]</span><span id="statStd">-</span></div>
+          <div class="stat-row"><span>最小[秒]</span><span id="statMin">-</span></div>
+          <div class="stat-row"><span>最大[秒]</span><span id="statMax">-</span></div>
+        </div>
+        <div class="stat-card">
+          <h3>未完了・対応不明</h3>
+          <div class="stat-row"><span>進行中(最新)</span><span id="statLive">-</span></div>
+          <div class="stat-row"><span>未完了(START のみ)</span><span id="statIncomplete">-</span></div>
+          <div class="stat-row"><span>開始不明(END のみ)</span><span id="statEndUnknown">-</span></div>
+          <div class="stat-row"><span>解析不能(EVT行)</span><span id="statUnparsableEvent">-</span></div>
+          <div class="stat-row"><span>フィルタ除外</span><span id="statExcluded">-</span></div>
+        </div>
+        <div class="stat-card">
+          <h3>機器時刻ズレ(参考値, ingest_t-機器時刻)</h3>
+          <div class="stat-row"><span>対象行数</span><span id="statDriftCount">-</span></div>
+          <div class="stat-row"><span>中央値[秒]</span><span id="statDriftMedian">-</span></div>
+          <div class="stat-row"><span>最小[秒]</span><span id="statDriftMin">-</span></div>
+          <div class="stat-row"><span>最大[秒]</span><span id="statDriftMax">-</span></div>
+        </div>
+      </div>
+
+      <div class="sub-heading">加工時間ヒストグラム</div>
+      <div class="filter-row">
+        <label>ビン幅[秒] <input type="number" id="histBinWidth" step="0.1" min="0" placeholder="自動"></label>
+      </div>
+      <div id="histEmpty" class="empty-state hidden">表示対象のサイクルがありません</div>
+      <div id="histChart"></div>
+
+      <div class="sub-heading">時間帯別稼働率(1時間バケット。加工時間合計÷バケット長。開始時刻のみで按分する簡易集計)</div>
+      <div id="hourlyEmpty" class="empty-state hidden">表示対象のサイクルがありません</div>
+      <div id="hourlyChart"></div>
+    </div>
+  </section>
+
+  <section class="panel cycle-gate">
+    <h2>サイクル一覧(直近100件、機器時刻を併記)</h2>
+    <div class="empty-state">データを取得しています…</div>
+    <div class="cycle-content hidden">
+      <div id="cycleTableEmpty" class="empty-state hidden">完了サイクルがありません</div>
+      <div class="table-scroll">
+        <table class="data-table" id="cycleTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>開始(ingest_t)</th><th>開始(機器時刻)</th>
+              <th>終了(ingest_t)</th><th>終了(機器時刻)</th>
+              <th>加工時間[秒]</th><th>ズレ[秒]</th>
+            </tr>
+          </thead>
+          <tbody id="cycleTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>通信品質</h2>
+    <div id="qualityEmpty" class="empty-state">機械が選択されていません</div>
+    <div id="qualityContent" class="hidden">
+      <div class="quality-summary">
+        <span class="badge" id="qualityOfflineCountBadge">offline回数: -</span>
+        <span class="badge" id="qualityOfflineTotalBadge">offline累計時間: -</span>
+        <span class="badge" id="qualityErrorTotalBadge">error総数: -</span>
+        <span class="badge warn" id="qualityErrorUnparsableBadge">うち解析不能: -</span>
+      </div>
+      <div class="sub-heading">status 推移(online/offline)</div>
+      <div id="statusEmpty" class="empty-state hidden">status イベントがありません</div>
+      <div id="statusChart"></div>
+      <div class="sub-heading">error(noise) 発生件数(1時間バケット。パース失敗行も ingest_t があるため件数に含む)</div>
+      <div id="errorEmpty" class="empty-state hidden">error イベントがありません</div>
+      <div id="errorChart"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>イベントログ(直近100件、選択中の機械)</h2>
+    <div id="eventLogEmpty" class="empty-state">データがありません</div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>日時(ingest_t)</th><th>種別</th><th>内容</th></tr></thead>
+        <tbody id="eventLogBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // =========================================================
+  // 0. 定数
+  // =========================================================
+  const MAX_POINTS = 20000;                       // 推移グラフの間引き上限(html/ampere/realtime.html を踏襲)
+  const INITIAL_WINDOW_DAYS = 7;                   // 初期読込ウィンドウ(現在日時からの遡り日数)
+  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})\.(?:csv|jsonl)$/i;
+  const NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  const DATA_BASE = '/rs232/yao/data/';            // nginx が配信するデータディレクトリ(絶対パス)
+  const EVENT_LOG_CAP = 500;                       // 機械ごとのイベントログ保持上限(リングバッファ)
+
+  const DEFAULT_MACHINE = 'YO-003';                // 既定で選択する機械(存在すれば)
+  // サイクル抽出(CYCLESTART/CYCLEEND の対応付け)ができる機械。
+  // YO-001 は相関IDが無く語彙も異なるため、今回はスコープ外(要件定義 §5)。
+  const CYCLE_CAPABLE_MACHINES = ['YO-003'];
+
+  let POLL_INTERVAL_MS = 10000;
+
+  // =========================================================
+  // 1. 日時パース・整形 - new Date(ローカル文字列) には頼らない
+  //    (html/ampere/realtime.html の 1. 日時パース節を移植)
+  // =========================================================
+  const DATETIME_RE = /^(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})$/;
+
+  function parseDateTime(str) {
+    if (typeof str !== 'string') return null;
+    const m = DATETIME_RE.exec(str.trim());
+    if (!m) return null;
+    const [, y, mo, d, h, mi, s, ms] = m;
+    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s), Number(ms));
+  }
+
+  // ingest_t / 機器時刻(timestamp)のパース。ISO 8601(オフセット付き)は
+  // new Date() で規格上一意に解釈できるためそのまま使う。
+  function parseReceivedTime(str) {
+    if (typeof str !== 'string') return null;
+    const s = str.trim();
+    if (s === '') return null;
+    const legacy = parseDateTime(s);
+    if (legacy) return legacy;
+    const iso = new Date(s);
+    return isNaN(iso.getTime()) ? null : iso;
+  }
+
+  // ローカル時刻の文字列変換(toISOString()はUTC変換されるため使用しない)
+  const LOCAL_INPUT_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+  function toLocalInputValue(d) {
+    const p2 = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+  }
+
+  function fromLocalInputValue(str) {
+    if (typeof str !== 'string' || str === '') return null;
+    const m = LOCAL_INPUT_RE.exec(str.trim());
+    if (!m) return null;
+    const [, y, mo, d, h, mi, s] = m;
+    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s || 0));
+  }
+
+  function parseFileStartTime(name) {
+    const m = FILENAME_TS_RE.exec(name);
+    if (!m) return null;
+    const [, y, mo, d, h, mi, s, ms] = m;
+    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s), Number(ms));
+  }
+
+  function formatDate(d) {
+    if (!d) return '—';
+    const p2 = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}.${String(d.getMilliseconds()).padStart(3, '0')}`;
+  }
+
+  function formatDurationSec(totalSec) {
+    if (!Number.isFinite(totalSec)) return '—';
+    const s = Math.round(totalSec);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const p2 = n => String(n).padStart(2, '0');
+    return `${h}:${p2(m)}:${p2(sec)}`;
+  }
+
+  function fmt(v, digits) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return '—';
+    return v.toFixed(digits === undefined ? 2 : digits);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function parseFloatOrNull(str) {
+    if (str === undefined || str === null || str === '') return null;
+    const v = Number(str);
+    return Number.isFinite(v) ? v : null;
+  }
+
+  // =========================================================
+  // 2. topic / payload / EVT値 のパース(要件定義 §3.2 新規実装分)
+  // =========================================================
+
+  // topic を {machine, kind} に分解する。machine は topic からしか得られないため
+  // これが機械ごとのデータ分離(FR-2)のキーになる。一致しなければ null(対象外)。
+  const TOPIC_RS232_SUB_RE = /^yao\/([^/]+)\/RS232\/(status|error)$/;
+  const TOPIC_RS232_RE = /^yao\/([^/]+)\/RS232$/;
+  const TOPIC_STATUS_ONLY_RE = /^yao\/([^/]+)\/status$/; // /RS232 を持たない変則形(例: NN-20U5-01)
+
+  function parseTopic(topic) {
+    if (typeof topic !== 'string') return null;
+    let m = TOPIC_RS232_SUB_RE.exec(topic);
+    if (m) return { machine: m[1], kind: m[2] };
+    m = TOPIC_RS232_RE.exec(topic);
+    if (m) return { machine: m[1], kind: 'data' };
+    m = TOPIC_STATUS_ONLY_RE.exec(topic);
+    if (m) return { machine: m[1], kind: 'status' };
+    return null;
+  }
+
+  // payload のパース。復元は試みず、失敗したら null を返すだけ(要件定義 §1.4-1)。
+  // error payload は 49/49 とも sample フィールドに生の制御文字が入っており
+  // strict JSON.parse に必ず失敗する。ここでは件数計上のみ行い、内容の復元はしない。
+  function parsePayload(raw) {
+    if (raw !== null && typeof raw === 'object') return raw;
+    if (typeof raw !== 'string') return null;
+    const s = raw.trim();
+    if (s === '') return null;
+    if (s[0] !== '{') return s; // "online" / "offline" のような裸文字列
+    try { return JSON.parse(s); } catch (e) { return null; }
+  }
+
+  // EVT行の動詞とID抽出。末尾に空白が付く個体があるため trim 必須(§1.4-3)。
+  const EVENT_RE = /^EVT\s+(\S+)(?:\s+ID(\d+))?/;
+  function parseEvent(rawValue) {
+    if (typeof rawValue !== 'string') return null;
+    const v = rawValue.trim();
+    const m = EVENT_RE.exec(v);
+    if (!m) return null;
+    return { verb: m[1], id: m[2] || null };
+  }
+
+  // =========================================================
+  // 3. 機械ごとの状態バケット(FR-2)
+  // =========================================================
+  let machines = {};        // machine id -> bucket。ハードコード一覧は持たず動的に発見する
+  let currentMachine = null;
+
+  function createMachineBucket(id) {
+    return {
+      id: id,
+      counts: { data: 0, status: 0, error: 0 },  // topicに一致した生の行数(セレクタの件数表示に使用)
+      unparsableEventCount: 0,   // data行でEVT値の正規表現に一致しなかった件数(CYCLE対応機のみ加算)
+      cycles: [],                 // 完了サイクル { id, startT, endT, startDeviceT, endDeviceT, durationSec }
+      openById: {},                // 進行中/未対応のSTART { [id]: {startT, startDeviceT} }
+      incompleteCycles: [],       // 二重STARTで確定した「未完了」
+      endUnknownCount: 0,         // ENDのみ(START不明)の件数
+      matchangeOpenById: {},      // 材料交換の開いているSTART
+      matchangeIntervals: [],     // 完了した材料交換区間 { start, end }
+      deviceDrifts: [],           // { t, driftSec } ingest_t-機器時刻。data行でtimestampが取れたもの全部(FR-7)
+      statusEvents: [],           // { t, value: 'online'|'offline' }
+      statusUnparsableCount: 0,
+      errorEvents: [],            // { t, ok } okならJSON解析に成功
+      errorUnparsableCount: 0,
+      eventLog: []                 // 直近イベントの生ログ(機械種別を問わず表示するイベントログ用)
+    };
+  }
+
+  function getOrCreateMachine(id) {
+    let b = machines[id];
+    if (!b) { b = createMachineBucket(id); machines[id] = b; }
+    return b;
+  }
+
+  function pushEventLog(bucket, entry) {
+    bucket.eventLog.push(entry);
+    if (bucket.eventLog.length > EVENT_LOG_CAP) bucket.eventLog.shift();
+  }
+
+  // data行の処理。機器時刻ズレはEVT語彙の対応可否と無関係に、timestampが
+  // 読めた行すべてで記録する(FR-7)。サイクル抽出(EVT解析)はCYCLE対応機のみ。
+  function processDataRow(bucket, machineId, payload, ingestT) {
+    if (payload && typeof payload === 'object' && typeof payload.timestamp === 'string') {
+      const deviceT = parseReceivedTime(payload.timestamp);
+      if (deviceT) bucket.deviceDrifts.push({ t: ingestT, driftSec: (ingestT - deviceT) / 1000 });
+    }
+
+    if (CYCLE_CAPABLE_MACHINES.indexOf(machineId) === -1) return; // FR-3: サイクル抽出はYO-003のみ
+
+    if (!payload || typeof payload !== 'object' || typeof payload.value !== 'string') {
+      bucket.unparsableEventCount++;
+      return;
+    }
+    const evt = parseEvent(payload.value);
+    if (!evt) { bucket.unparsableEventCount++; return; }
+    const deviceT = typeof payload.timestamp === 'string' ? parseReceivedTime(payload.timestamp) : null;
+
+    if (evt.verb === 'CYCLESTART') {
+      if (!evt.id) { bucket.unparsableEventCount++; return; }
+      const prevOpen = bucket.openById[evt.id];
+      if (prevOpen) {
+        // 同一IDの二重START: 直前を「未完了」で確定し、新規サイクルを開始する(FR-3)
+        bucket.incompleteCycles.push(prevOpen);
+      }
+      bucket.openById[evt.id] = { id: evt.id, startT: ingestT, startDeviceT: deviceT };
+    } else if (evt.verb === 'CYCLEEND') {
+      if (!evt.id) { bucket.unparsableEventCount++; return; }
+      const open = bucket.openById[evt.id];
+      if (open) {
+        bucket.cycles.push({
+          id: evt.id,
+          startT: open.startT, endT: ingestT,
+          startDeviceT: open.startDeviceT, endDeviceT: deviceT,
+          durationSec: (ingestT - open.startT) / 1000
+        });
+        delete bucket.openById[evt.id];
+      } else {
+        bucket.endUnknownCount++; // STARTがウィンドウ外/ノイズで欠落(§1.4-5)
+      }
+    } else if (evt.verb === 'MATCHANGESTART') {
+      bucket.matchangeOpenById[evt.id || '_'] = ingestT;
+    } else if (evt.verb === 'MATCHANGEEND') {
+      const key = evt.id || '_';
+      const openT = bucket.matchangeOpenById[key];
+      if (openT !== undefined) {
+        bucket.matchangeIntervals.push({ start: openT, end: ingestT });
+        delete bucket.matchangeOpenById[key];
+      }
+      // ENDが来ないSTARTはそのまま無視する(未完了カウントにも入れない。FR-3)
+    }
+    // CYCLE/MATCHANGE以外の動詞は将来の語彙拡張用に黙って無視する
+  }
+
+  function processStatusRow(bucket, payload, ingestT) {
+    let v = null;
+    if (typeof payload === 'string') {
+      const s = payload.trim().toLowerCase();
+      if (s === 'online' || s === 'offline') v = s;
+    }
+    if (v) bucket.statusEvents.push({ t: ingestT, value: v });
+    else bucket.statusUnparsableCount++;
+  }
+
+  function processErrorRow(bucket, payload, ingestT) {
+    // sample/count の中身は復元しないが、ingest_tがある限り発生件数・時間推移は集計できる(§1.4-1)
+    const ok = !!(payload && typeof payload === 'object');
+    bucket.errorEvents.push({ t: ingestT, ok: ok });
+    if (!ok) bucket.errorUnparsableCount++;
+  }
+
+  // =========================================================
+  // 4. 取り込み(JSONLテキスト→機械バケットへの分配)
+  // =========================================================
+  function ingestText(text) {
+    const lines = text.split(/\r?\n/);
+    let adopted = 0, unmatched = 0, unparsableLine = 0;
+    for (const line of lines) {
+      if (line.trim() === '') continue;
+      let obj;
+      try { obj = JSON.parse(line); } catch (e) { unparsableLine++; continue; }
+      if (!obj || typeof obj !== 'object') { unparsableLine++; continue; }
+
+      // 処理順序は必ず ①ingest_tパース→②topic分解→③件数計上→④parsePayload。
+      // payloadの成否に関わらず「その機械のその種別のイベントが発生した」事実を
+      // 先に集計へ反映するため(要件定義 §3.2)。
+      const t = parseReceivedTime(obj.ingest_t);
+      if (!t) { unmatched++; continue; }
+      const topicInfo = parseTopic(obj.topic);
+      if (!topicInfo) { unmatched++; continue; }
+
+      adopted++;
+      const bucket = getOrCreateMachine(topicInfo.machine);
+      bucket.counts[topicInfo.kind] = (bucket.counts[topicInfo.kind] || 0) + 1;
+
+      const payload = parsePayload(obj.payload);
+
+      if (topicInfo.kind === 'data') {
+        processDataRow(bucket, topicInfo.machine, payload, t);
+        const text2 = (payload && typeof payload === 'object' && typeof payload.value === 'string')
+          ? payload.value.trim() : '(解析不能)';
+        pushEventLog(bucket, { t: t, kind: 'data', text: text2 });
+      } else if (topicInfo.kind === 'status') {
+        processStatusRow(bucket, payload, t);
+        pushEventLog(bucket, { t: t, kind: 'status', text: (typeof payload === 'string') ? payload : '(解析不能)' });
+      } else if (topicInfo.kind === 'error') {
+        processErrorRow(bucket, payload, t);
+        const okText = (payload && typeof payload === 'object')
+          ? `ノイズ検出 (count=${payload.count})` : '(解析不能)';
+        pushEventLog(bucket, { t: t, kind: 'error', text: okText });
+      }
+    }
+    return { adopted: adopted, unmatched: unmatched, unparsableLine: unparsableLine };
+  }
+
+  // =========================================================
+  // 5. ポーリング(html/ampere/realtime.html のポーリング機構を移植)
+  // =========================================================
+  let fileState = {};              // ファイル名 → { offset, adopted, unmatched, unparsableLine }
+  let totalAdopted = 0, totalUnmatched = 0, totalUnparsableLine = 0;
+  let liveFollow = true;
+  let pollTimer = null;
+  let polling = false;
+
+  let loadWindowStartMs = Date.now() - INITIAL_WINDOW_DAYS * 24 * 3600 * 1000;
+  let backfillPending = false;
+
+  async function fetchListing() {
+    const res = await fetch(DATA_BASE + '?_=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('listing HTTP ' + res.status);
+    const arr = await res.json();
+    return arr.filter(e => e.type === 'file' && /\.jsonl$/i.test(e.name));
+  }
+
+  // 各ファイルの守備範囲を [自身の開始時刻, 次ファイルの開始時刻) とみなし、
+  // windowStartMs 以降のデータを含みうるファイルだけを返す(ampere と同一ロジック)。
+  function selectFilesInWindow(sortedFiles, windowStartMs) {
+    const out = [];
+    for (let i = 0; i < sortedFiles.length; i++) {
+      const start = parseFileStartTime(sortedFiles[i].name);
+      if (!start) { out.push(sortedFiles[i]); continue; }
+      const next = i + 1 < sortedFiles.length ? parseFileStartTime(sortedFiles[i + 1].name) : null;
+      const coverEndMs = next ? next.getTime() : Infinity;
+      if (coverEndMs > windowStartMs) out.push(sortedFiles[i]);
+    }
+    return out;
+  }
+
+  async function ingestChunk(name, fromByte) {
+    const url = DATA_BASE + encodeURIComponent(name);
+    const opt = { cache: 'no-store' };
+    if (fromByte > 0) opt.headers = { 'Range': 'bytes=' + fromByte + '-' };
+    const res = await fetch(url, opt);
+    if (res.status === 416) return 0;
+    if (!res.ok && res.status !== 206) throw new Error('chunk HTTP ' + res.status);
+
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.length === 0) return 0;
+
+    // バイト列の「最後の改行」までを完全行として扱い、末尾の未完行は次回に持ち越す(UTF-8対策)
+    let lastNl = -1;
+    for (let i = buf.length - 1; i >= 0; i--) { if (buf[i] === 0x0A) { lastNl = i; break; } }
+    if (lastNl < 0) return 0;
+
+    const complete = buf.subarray(0, lastNl + 1);
+    const text = new TextDecoder('utf-8').decode(complete);
+    const r = ingestText(text);
+
+    const st = fileState[name] || { offset: 0, adopted: 0, unmatched: 0, unparsableLine: 0 };
+    st.offset = fromByte + (lastNl + 1);
+    st.adopted += r.adopted;
+    st.unmatched += r.unmatched;
+    st.unparsableLine += r.unparsableLine;
+    fileState[name] = st;
+
+    totalAdopted += r.adopted;
+    totalUnmatched += r.unmatched;
+    totalUnparsableLine += r.unparsableLine;
+
+    return r.adopted;
+  }
+
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      const files = await fetchListing();
+      files.sort((a, b) => NAME_COLLATOR.compare(a.name, b.name));
+      const targets = selectFilesInWindow(files, loadWindowStartMs);
+      let added = 0;
+      for (const f of targets) {
+        const seen = fileState[f.name] ? fileState[f.name].offset : 0;
+        if (f.size > seen) {
+          added += await ingestChunk(f.name, seen);
+        } else if (!fileState[f.name]) {
+          fileState[f.name] = { offset: f.size, adopted: 0, unmatched: 0, unparsableLine: 0 };
+        }
+      }
+      if (added > 0) {
+        refreshView();
+      } else {
+        renderMachineSelector(); // 新規機械の動的発見のため、データ追加が無くても一覧だけは最新化
+      }
+      renderFileInfoLive();
+      setStatus('ok');
+    } catch (e) {
+      setStatus('error', e);
+    } finally {
+      polling = false;
+      if (backfillPending) { backfillPending = false; poll(); }
+      else scheduleNext();
+    }
+  }
+
+  function scheduleNext() {
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+  }
+
+  function requestBackfill(start) {
+    if (!start || start.getTime() >= loadWindowStartMs) return;
+    loadWindowStartMs = start.getTime();
+    if (polling) { backfillPending = true; return; }
+    setStatus('loading');
+    poll();
+  }
+
+  function setStatus(kind, err) {
+    statusText.classList.remove('ok', 'error');
+    if (kind === 'loading') { statusText.textContent = '過去データ読込中…'; return; }
+    if (kind === 'ok') {
+      statusText.classList.add('ok');
+      statusText.textContent = '接続OK';
+      lastUpdated.textContent = '最終更新: ' + formatDate(new Date());
+    } else {
+      statusText.classList.add('error');
+      statusText.textContent = '取得エラー(リトライします)';
+      if (err) console.error('[poll]', err);
+    }
+  }
+
+  function renderFileInfoLive() {
+    const names = Object.keys(fileState);
+    if (names.length === 0) { fileSummary.classList.add('hidden'); fileInfo.innerHTML = ''; return; }
+    fileSummary.classList.remove('hidden');
+    badgeFiles.textContent = `ファイル: ${names.length}`;
+    badgeAdopted.textContent = `採用行数: ${totalAdopted.toLocaleString()}`;
+    if (totalUnmatched > 0) {
+      badgeUnmatched.classList.remove('hidden');
+      badgeUnmatched.textContent = `対象外: ${totalUnmatched.toLocaleString()}`;
+    } else badgeUnmatched.classList.add('hidden');
+    if (totalUnparsableLine > 0) {
+      badgeUnparsable.classList.remove('hidden');
+      badgeUnparsable.textContent = `解析不能: ${totalUnparsableLine.toLocaleString()}`;
+    } else badgeUnparsable.classList.add('hidden');
+
+    const sorted = names.slice().sort((a, b) => NAME_COLLATOR.compare(b, a));
+    let html = '<table class="data-table"><thead><tr><th>ファイル名</th><th>採用</th><th>対象外</th><th>解析不能</th></tr></thead><tbody>';
+    for (const n of sorted) {
+      const st = fileState[n];
+      html += `<tr><td>${escapeHtml(n)}</td><td>${st.adopted.toLocaleString()}</td><td>${st.unmatched.toLocaleString()}</td><td>${st.unparsableLine.toLocaleString()}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    fileInfo.innerHTML = html;
+  }
+
+  // =========================================================
+  // 6. 機械セレクタ(FR-2)
+  // =========================================================
+  const machineSelectWrap = document.getElementById('machineSelectWrap');
+  const machineSelect = document.getElementById('machineSelect');
+
+  function renderMachineSelector() {
+    const ids = Object.keys(machines);
+    if (ids.length === 0) { machineSelectWrap.classList.add('hidden'); return; }
+    machineSelectWrap.classList.remove('hidden');
+
+    const withCounts = ids.map(id => {
+      const b = machines[id];
+      return { id: id, total: b.counts.data + b.counts.status + b.counts.error };
+    });
+    withCounts.sort((a, b) => b.total - a.total || NAME_COLLATOR.compare(a.id, b.id));
+
+    // 選択中の機械が消えていなければ維持する。無ければ既定(YO-003優先)へ。
+    if (!currentMachine || !machines[currentMachine]) {
+      const def = withCounts.find(m => m.id === DEFAULT_MACHINE);
+      currentMachine = def ? def.id : (withCounts[0] ? withCounts[0].id : null);
+    }
+
+    machineSelect.innerHTML = withCounts.map(m =>
+      `<option value="${escapeHtml(m.id)}"${m.id === currentMachine ? ' selected' : ''}>${escapeHtml(m.id)} (${m.total.toLocaleString()}件)</option>`
+    ).join('');
+  }
+
+  machineSelect.addEventListener('change', () => {
+    currentMachine = machineSelect.value;
+    // 機械切替時は表示期間もリセットする(前機種のズームレンジを引き継がない=完全に切り替わることの担保)
+    currentRangeStart = null; currentRangeEnd = null;
+    renderAllPanels();
+  });
+
+  // =========================================================
+  // 7. 表示範囲(全パネル共有, FR-6)・ライブ追従
+  // =========================================================
+  const liveFollowChk = document.getElementById('liveFollowChk');
+  const intervalSel = document.getElementById('intervalSel');
+  const rangeStartInput = document.getElementById('rangeStart');
+  const rangeEndInput = document.getElementById('rangeEnd');
+  const rangeControls = document.getElementById('rangeControls');
+
+  let currentRangeStart = null;
+  let currentRangeEnd = null;
+  let suppressRelayout = false;
+
+  // 選択中の機械が持つデータの最小/最大時刻(推移・ガント・通信品質の全イベントを対象に取る)
+  function getMachineBounds(machineId) {
+    const b = machineId ? machines[machineId] : null;
+    if (!b) return null;
+    let min = null, max = null;
+    const consider = d => { if (!d) return; if (!min || d < min) min = d; if (!max || d > max) max = d; };
+    for (const c of b.cycles) { consider(c.startT); consider(c.endT); }
+    for (const k in b.openById) consider(b.openById[k].startT);
+    for (const s of b.statusEvents) consider(s.t);
+    for (const e of b.errorEvents) consider(e.t);
+    if (!min || !max) return null;
+    return { min: min, max: max };
+  }
+
+  function hasVisibleData() {
+    return !!getMachineBounds(currentMachine);
+  }
+
+  // 表示範囲の単一の入口関数。html/ampere/realtime.html の setRange と同じ双方向連動方式だが、
+  // このツールはデータ量が小さい(数百行オーダー)ため、range変更のたびに全パネルを
+  // Plotly.react で再描画してしまって問題ない。ampere 版のような「relayoutのみで済ませる」
+  // 最適化は行わず、代わりに複数チャート間のレース条件を単純化している。
+  function setRange(start, end, source) {
+    const bounds = getMachineBounds(currentMachine);
+    if (!bounds) {
+      currentRangeStart = null; currentRangeEnd = null;
+    } else {
+      if (!start) start = bounds.min;
+      if (!end) end = bounds.max;
+      currentRangeStart = start;
+      currentRangeEnd = end;
+    }
+    rangeStartInput.value = currentRangeStart ? toLocalInputValue(currentRangeStart) : '';
+    rangeEndInput.value = currentRangeEnd ? toLocalInputValue(currentRangeEnd) : '';
+    renderAllPanels();
+    if ((source === 'input' || source === 'preset') && currentRangeStart) {
+      requestBackfill(currentRangeStart);
+    }
+  }
+
+  function onAnyChartRelayout(eventData) {
+    if (suppressRelayout) return;
+    if (!eventData) return;
+    if (eventData['xaxis.autorange'] === true || eventData['autosize']) {
+      setRangeGuarded(null, null, 'plot');
+      return;
+    }
+    const x0 = eventData['xaxis.range[0]'];
+    const x1 = eventData['xaxis.range[1]'];
+    if (x0 === undefined || x1 === undefined) return;
+    const start = new Date(x0), end = new Date(x1);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+    // ユーザーがグラフをズーム/パンしたらライブ追従を自動OFF(FR-6)
+    if (liveFollow) { liveFollow = false; liveFollowChk.checked = false; }
+    setRangeGuarded(start, end, 'plot');
+  }
+
+  function setRangeGuarded(start, end, source) {
+    suppressRelayout = true;
+    setRange(start, end, source);
+    setTimeout(() => { suppressRelayout = false; }, 0);
+  }
+
+  function bindRelayout(div) {
+    if (!div || div._relayoutBound) return;
+    div.on('plotly_relayout', onAnyChartRelayout);
+    div._relayoutBound = true;
+  }
+
+  function rangeAxisConfig(title) {
+    const ax = { title: title, type: 'date' };
+    if (currentRangeStart && currentRangeEnd) ax.range = [currentRangeStart, currentRangeEnd];
+    return ax;
+  }
+
+  function onRangeInputChange() {
+    if (!hasVisibleData()) return;
+    let start = fromLocalInputValue(rangeStartInput.value);
+    let end = fromLocalInputValue(rangeEndInput.value);
+    const bounds = getMachineBounds(currentMachine);
+    if (!start) start = bounds.min;
+    if (!end) end = bounds.max;
+    if (start.getTime() > end.getTime()) return;
+    setRange(start, end, 'input');
+  }
+  rangeStartInput.addEventListener('change', onRangeInputChange);
+  rangeEndInput.addEventListener('change', onRangeInputChange);
+
+  rangeControls.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-preset]');
+    if (!btn || !hasVisibleData()) return;
+    const preset = btn.dataset.preset;
+    const bounds = getMachineBounds(currentMachine);
+    if (preset === 'all') { setRange(null, null, 'preset'); return; }
+    const hoursMap = { '1h': 1, '6h': 6, '24h': 24 };
+    const hours = hoursMap[preset];
+    if (!hours) return;
+    let start = new Date(bounds.max.getTime() - hours * 3600000);
+    if (start.getTime() < bounds.min.getTime()) start = bounds.min;
+    setRange(start, bounds.max, 'preset');
+  });
+
+  function refreshView() {
+    if (!currentMachine) { renderAllPanels(); return; }
+    if (liveFollow) {
+      const s = fromLocalInputValue(rangeStartInput.value);
+      setRange(s, null, 'live');
+    } else {
+      const s = fromLocalInputValue(rangeStartInput.value);
+      const e = fromLocalInputValue(rangeEndInput.value);
+      setRange(s, e, 'live');
+    }
+  }
+
+  liveFollowChk.addEventListener('change', () => { liveFollow = liveFollowChk.checked; refreshView(); });
+  intervalSel.addEventListener('change', () => { POLL_INTERVAL_MS = Number(intervalSel.value) || 10000; scheduleNext(); });
+
+  // =========================================================
+  // 8. 加工時間フィルタ(FR-4)・分位数
+  // =========================================================
+  const filterMinInput = document.getElementById('filterMin');
+  const filterMaxInput = document.getElementById('filterMax');
+  const histBinWidthInput = document.getElementById('histBinWidth');
+
+  function applyThreshold(cycles) {
+    const minV = parseFloatOrNull(filterMinInput.value);
+    const maxV = parseFloatOrNull(filterMaxInput.value);
+    if (minV === null && maxV === null) return { included: cycles, excluded: 0 };
+    const included = [];
+    let excluded = 0;
+    for (const c of cycles) {
+      if (minV !== null && c.durationSec < minV) { excluded++; continue; }
+      if (maxV !== null && c.durationSec > maxV) { excluded++; continue; }
+      included.push(c);
+    }
+    return { included: included, excluded: excluded };
+  }
+
+  function filterByCurrentRange(cycles) {
+    if (!currentRangeStart || !currentRangeEnd) return cycles;
+    const s = currentRangeStart.getTime(), e = currentRangeEnd.getTime();
+    return cycles.filter(c => c.startT.getTime() >= s && c.startT.getTime() <= e);
+  }
+
+  function filterDriftsByCurrentRange(drifts) {
+    if (!currentRangeStart || !currentRangeEnd) return drifts;
+    const s = currentRangeStart.getTime(), e = currentRangeEnd.getTime();
+    return drifts.filter(d => d.t.getTime() >= s && d.t.getTime() <= e);
+  }
+
+  filterMinInput.addEventListener('change', renderAllPanels);
+  filterMaxInput.addEventListener('change', renderAllPanels);
+  histBinWidthInput.addEventListener('change', renderAllPanels);
+
+  function quantile(sortedArr, p) {
+    const n = sortedArr.length;
+    if (n === 0) return null;
+    if (n === 1) return sortedArr[0];
+    const idx = (n - 1) * p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    if (lo === hi) return sortedArr[lo];
+    return sortedArr[lo] + (sortedArr[hi] - sortedArr[lo]) * (idx - lo);
+  }
+
+  function computeCycleStats(cycles) {
+    const n = cycles.length;
+    if (n === 0) return { count: 0, median: null, mean: null, min: null, max: null, p10: null, p90: null, std: null };
+    const durs = cycles.map(c => c.durationSec).sort((a, b) => a - b);
+    let sum = 0; for (const d of durs) sum += d;
+    const mean = sum / n;
+    let sqSum = 0; for (const d of durs) sqSum += (d - mean) * (d - mean);
+    return {
+      count: n, median: quantile(durs, 0.5), mean: mean,
+      min: durs[0], max: durs[n - 1],
+      p10: quantile(durs, 0.1), p90: quantile(durs, 0.9), std: Math.sqrt(sqSum / n)
+    };
+  }
+
+  function computeDriftStats(drifts) {
+    const n = drifts.length;
+    if (n === 0) return { count: 0, median: null, min: null, max: null };
+    const vals = drifts.map(d => d.driftSec).sort((a, b) => a - b);
+    return { count: n, median: quantile(vals, 0.5), min: vals[0], max: vals[n - 1] };
+  }
+
+  // =========================================================
+  // 9. ダウンサンプリング(ampere と同一方式)
+  // =========================================================
+  function downsample(arr) {
+    const n = arr.length;
+    if (n <= MAX_POINTS) return arr;
+    const step = Math.ceil(n / MAX_POINTS);
+    const out = [];
+    for (let i = 0; i < n; i += step) out.push(arr[i]);
+    if (out[out.length - 1] !== arr[n - 1]) out.push(arr[n - 1]);
+    return out;
+  }
+
+  // =========================================================
+  // 10. 稼働タイムライン用: offline区間の算出(ガント・通信品質パネル共用)
+  // =========================================================
+  function computeOfflineIntervals(bucket) {
+    const events = bucket.statusEvents.slice().sort((a, b) => a.t - b.t);
+    const intervals = [];
+    let openStart = null;
+    for (const e of events) {
+      if (e.value === 'offline' && openStart === null) {
+        openStart = e.t;
+      } else if (e.value === 'online' && openStart !== null) {
+        intervals.push({ start: openStart, end: e.t });
+        openStart = null;
+      }
+    }
+    if (openStart !== null) {
+      // 末尾がoffline状態のまま終わっている場合、直近の既知時刻まで区間を伸ばす
+      const lastKnown = events.length ? events[events.length - 1].t : openStart;
+      intervals.push({ start: openStart, end: lastKnown > openStart ? lastKnown : openStart });
+    }
+    return intervals;
+  }
+
+  // =========================================================
+  // 11. 描画: サイクル系パネルのゲート制御(FR-3)
+  // =========================================================
+  function setCycleGateState(state) {
+    // state: 'loading' | 'unsupported' | 'ready'
+    const msg = state === 'loading' ? 'データを取得しています…'
+      : (state === 'unsupported' ? 'この機械のイベント形式は未対応です' : '');
+    document.querySelectorAll('.cycle-gate > .empty-state').forEach(el => {
+      if (state === 'ready') { el.classList.add('hidden'); }
+      else { el.textContent = msg; el.classList.remove('hidden'); }
+    });
+    document.querySelectorAll('.cycle-gate .cycle-content').forEach(el => {
+      el.classList.toggle('hidden', state !== 'ready');
+    });
+  }
+
+  // =========================================================
+  // 12. 描画: サイクルタイム推移
+  // =========================================================
+  const cycleScatterEmpty = document.getElementById('cycleScatterEmpty');
+  const cycleScatterChart = document.getElementById('cycleScatterChart');
+
+  function renderCycleScatter(cycles, medianVal) {
+    if (!cycles.length) {
+      cycleScatterEmpty.classList.remove('hidden');
+      cycleScatterChart.classList.add('hidden');
+      return;
+    }
+    cycleScatterEmpty.classList.add('hidden');
+    cycleScatterChart.classList.remove('hidden');
+
+    const sorted = cycles.slice().sort((a, b) => a.startT - b.startT);
+    const ds = downsample(sorted);
+    const xs = ds.map(c => c.startT);
+    const ys = ds.map(c => c.durationSec);
+    const hover = ds.map(c =>
+      `ID ${c.id}<br>開始: ${formatDate(c.startT)}<br>終了: ${formatDate(c.endT)}` +
+      `<br>機器時刻(開始): ${formatDate(c.startDeviceT)}` +
+      `<br>加工時間: ${c.durationSec.toFixed(2)}秒`
+    );
+
+    const trace = {
+      x: xs, y: ys, type: 'scattergl', mode: 'markers',
+      marker: { size: 5, color: '#1f77b4' },
+      text: hover, hoverinfo: 'text', name: '加工時間'
+    };
+
+    const layout = {
+      margin: { l: 55, r: 20, t: 10, b: 40 },
+      xaxis: rangeAxisConfig('開始時刻(ingest_t)'),
+      yaxis: { title: '加工時間 [秒]' },
+      shapes: Number.isFinite(medianVal) ? [{
+        type: 'line', xref: 'paper', x0: 0, x1: 1,
+        yref: 'y', y0: medianVal, y1: medianVal,
+        line: { color: '#b3261e', width: 1, dash: 'dash' }
+      }] : [],
+      hovermode: 'closest'
+    };
+    Plotly.react(cycleScatterChart, [trace], layout, { responsive: true });
+    bindRelayout(cycleScatterChart);
+  }
+
+  // =========================================================
+  // 13. 描画: 稼働タイムライン(ガント)
+  // =========================================================
+  const ganttEmpty = document.getElementById('ganttEmpty');
+  const ganttChart = document.getElementById('ganttChart');
+
+  function renderGantt(bucket) {
+    // 空き時間の把握が目的のため、フィルタ(FR-4)は適用せず全区間を表示する。
+    const machining = { x: [], y: [] };
+    for (const c of bucket.cycles) { machining.x.push(c.startT, c.endT, null); machining.y.push('加工中', '加工中', null); }
+    const matchange = { x: [], y: [] };
+    for (const m of bucket.matchangeIntervals) { matchange.x.push(m.start, m.end, null); matchange.y.push('材料交換', '材料交換', null); }
+    const offlineIntervals = computeOfflineIntervals(bucket);
+    const offline = { x: [], y: [] };
+    for (const o of offlineIntervals) { offline.x.push(o.start, o.end, null); offline.y.push('オフライン', 'オフライン', null); }
+
+    if (!machining.x.length && !matchange.x.length && !offline.x.length) {
+      ganttEmpty.classList.remove('hidden');
+      ganttChart.classList.add('hidden');
+      return;
+    }
+    ganttEmpty.classList.add('hidden');
+    ganttChart.classList.remove('hidden');
+
+    // 件数が多いため null 区切りの単一 line トレース(区間ごと)で描画する(要件定義 FR-5-2)
+    const traces = [
+      { x: machining.x, y: machining.y, mode: 'lines', line: { color: '#1f77b4', width: 14 }, name: '加工中', hoverinfo: 'skip' },
+      { x: matchange.x, y: matchange.y, mode: 'lines', line: { color: '#ff7f0e', width: 14 }, name: '材料交換', hoverinfo: 'skip' },
+      { x: offline.x, y: offline.y, mode: 'lines', line: { color: '#b3261e', width: 14 }, name: 'オフライン', hoverinfo: 'skip' }
+    ];
+    const layout = {
+      margin: { l: 90, r: 20, t: 10, b: 40 },
+      xaxis: rangeAxisConfig('時刻'),
+      yaxis: { categoryorder: 'array', categoryarray: ['オフライン', '材料交換', '加工中'] },
+      showlegend: true,
+      legend: { orientation: 'h', y: 1.15 }
+    };
+    Plotly.react(ganttChart, traces, layout, { responsive: true });
+    bindRelayout(ganttChart);
+  }
+
+  // =========================================================
+  // 14. 描画: 統計サマリ・ヒストグラム・時間帯別稼働率
+  // =========================================================
+  const statCount = document.getElementById('statCount');
+  const statMedian = document.getElementById('statMedian');
+  const statP10 = document.getElementById('statP10');
+  const statP90 = document.getElementById('statP90');
+  const statMean = document.getElementById('statMean');
+  const statStd = document.getElementById('statStd');
+  const statMin = document.getElementById('statMin');
+  const statMax = document.getElementById('statMax');
+  const statLive = document.getElementById('statLive');
+  const statIncomplete = document.getElementById('statIncomplete');
+  const statEndUnknown = document.getElementById('statEndUnknown');
+  const statUnparsableEvent = document.getElementById('statUnparsableEvent');
+  const statExcluded = document.getElementById('statExcluded');
+  const statDriftCount = document.getElementById('statDriftCount');
+  const statDriftMedian = document.getElementById('statDriftMedian');
+  const statDriftMin = document.getElementById('statDriftMin');
+  const statDriftMax = document.getElementById('statDriftMax');
+  const filterExcludedNote = document.getElementById('filterExcludedNote');
+
+  const histEmpty = document.getElementById('histEmpty');
+  const histChart = document.getElementById('histChart');
+  const hourlyEmpty = document.getElementById('hourlyEmpty');
+  const hourlyChart = document.getElementById('hourlyChart');
+
+  function renderStatsPanel(bucket, filtered, stats, driftStats) {
+    statCount.textContent = stats.count.toLocaleString();
+    statMedian.textContent = fmt(stats.median);
+    statP10.textContent = fmt(stats.p10);
+    statP90.textContent = fmt(stats.p90);
+    statMean.textContent = fmt(stats.mean);
+    statStd.textContent = fmt(stats.std);
+    statMin.textContent = fmt(stats.min);
+    statMax.textContent = fmt(stats.max);
+
+    // 進行中(最新のSTARTのみ、END未着): openById のうち開始時刻が最も新しいもの1件をライブ扱いにする(FR-3)
+    const openEntries = Object.keys(bucket.openById).map(k => bucket.openById[k]).sort((a, b) => b.startT - a.startT);
+    const liveCount = openEntries.length > 0 ? 1 : 0;
+    const incompleteCount = bucket.incompleteCycles.length + Math.max(0, openEntries.length - 1);
+    statLive.textContent = liveCount.toLocaleString();
+    statIncomplete.textContent = incompleteCount.toLocaleString();
+    statEndUnknown.textContent = bucket.endUnknownCount.toLocaleString();
+    statUnparsableEvent.textContent = bucket.unparsableEventCount.toLocaleString();
+    statExcluded.textContent = filtered.excluded.toLocaleString();
+    filterExcludedNote.textContent = filtered.excluded > 0 ? `(フィルタにより ${filtered.excluded} 件を除外中)` : '';
+
+    statDriftCount.textContent = driftStats.count.toLocaleString();
+    statDriftMedian.textContent = fmt(driftStats.median);
+    statDriftMin.textContent = fmt(driftStats.min);
+    statDriftMax.textContent = fmt(driftStats.max);
+
+    renderHistogram(filtered.included);
+    renderHourlyUtilization(filtered.included);
+  }
+
+  function renderHistogram(cycles) {
+    if (!cycles.length) {
+      histEmpty.classList.remove('hidden');
+      histChart.classList.add('hidden');
+      return;
+    }
+    histEmpty.classList.add('hidden');
+    histChart.classList.remove('hidden');
+
+    const durs = cycles.map(c => c.durationSec);
+    const trace = { x: durs, type: 'histogram', marker: { color: '#1f77b4' } };
+    const binWidth = parseFloatOrNull(histBinWidthInput.value);
+    if (binWidth && binWidth > 0) trace.xbins = { size: binWidth };
+    const layout = { margin: { l: 50, r: 20, t: 10, b: 40 }, xaxis: { title: '加工時間 [秒]' }, yaxis: { title: '件数' } };
+    Plotly.react(histChart, [trace], layout, { responsive: true });
+  }
+
+  function renderHourlyUtilization(cycles) {
+    if (!cycles.length) {
+      hourlyEmpty.classList.remove('hidden');
+      hourlyChart.classList.add('hidden');
+      return;
+    }
+    hourlyEmpty.classList.add('hidden');
+    hourlyChart.classList.remove('hidden');
+
+    // 簡易集計: サイクルの開始時刻が属する1時間バケットに加工時間全量を計上する
+    // (バケット境界をまたぐサイクルの按分はしない。サンプルデータの分布は本番実態を
+    //  表さないため、この単純化に合わせたチューニングは行わない=要件定義 §1.4-6)
+    const buckets = {};
+    for (const c of cycles) {
+      const hourStart = Math.floor(c.startT.getTime() / 3600000) * 3600000;
+      buckets[hourStart] = (buckets[hourStart] || 0) + c.durationSec;
+    }
+    const keys = Object.keys(buckets).map(Number).sort((a, b) => a - b);
+    const xs = keys.map(k => new Date(k));
+    // 意図的に100%で丸めない(重複計上等のデータ異常もそのまま見えるようにするため)
+    const ys = keys.map(k => buckets[k] / 3600 * 100);
+    const trace = { x: xs, y: ys, type: 'bar', marker: { color: '#2e7d32' } };
+    const layout = { margin: { l: 50, r: 20, t: 10, b: 40 }, xaxis: rangeAxisConfig('時刻(1時間バケット)'), yaxis: { title: '稼働率 [%]' } };
+    Plotly.react(hourlyChart, [trace], layout, { responsive: true });
+  }
+
+  function clearStatCards() {
+    [statCount, statMedian, statP10, statP90, statMean, statStd, statMin, statMax,
+      statLive, statIncomplete, statEndUnknown, statUnparsableEvent, statExcluded,
+      statDriftCount, statDriftMedian, statDriftMin, statDriftMax].forEach(el => el.textContent = '-');
+    filterExcludedNote.textContent = '';
+  }
+
+  // =========================================================
+  // 15. 描画: サイクル一覧テーブル(FR-7)
+  // =========================================================
+  const cycleTableEmpty = document.getElementById('cycleTableEmpty');
+  const cycleTableBody = document.getElementById('cycleTableBody');
+
+  function renderCycleTable(bucket) {
+    const recent = bucket.cycles.slice().sort((a, b) => b.startT - a.startT).slice(0, 100);
+    if (!recent.length) {
+      cycleTableEmpty.classList.remove('hidden');
+      cycleTableBody.innerHTML = '';
+      return;
+    }
+    cycleTableEmpty.classList.add('hidden');
+    let html = '';
+    for (const c of recent) {
+      const driftSec = c.startDeviceT ? (c.startT - c.startDeviceT) / 1000 : null;
+      html += `<tr>
+        <td>${escapeHtml(c.id)}</td>
+        <td>${escapeHtml(formatDate(c.startT))}</td>
+        <td>${escapeHtml(formatDate(c.startDeviceT))}</td>
+        <td>${escapeHtml(formatDate(c.endT))}</td>
+        <td>${escapeHtml(formatDate(c.endDeviceT))}</td>
+        <td>${c.durationSec.toFixed(2)}</td>
+        <td>${driftSec !== null ? driftSec.toFixed(2) : '—'}</td>
+      </tr>`;
+    }
+    cycleTableBody.innerHTML = html;
+  }
+
+  function clearCycleTable() {
+    cycleTableEmpty.classList.add('hidden');
+    cycleTableBody.innerHTML = '';
+  }
+
+  // =========================================================
+  // 16. 描画: 通信品質パネル(全機械共通、FR-3の例外)
+  // =========================================================
+  const qualityEmpty = document.getElementById('qualityEmpty');
+  const qualityContent = document.getElementById('qualityContent');
+  const qualityOfflineCountBadge = document.getElementById('qualityOfflineCountBadge');
+  const qualityOfflineTotalBadge = document.getElementById('qualityOfflineTotalBadge');
+  const qualityErrorTotalBadge = document.getElementById('qualityErrorTotalBadge');
+  const qualityErrorUnparsableBadge = document.getElementById('qualityErrorUnparsableBadge');
+  const statusEmpty = document.getElementById('statusEmpty');
+  const statusChart = document.getElementById('statusChart');
+  const errorEmpty = document.getElementById('errorEmpty');
+  const errorChart = document.getElementById('errorChart');
+
+  function renderQualityPanel(bucket) {
+    if (!bucket) {
+      qualityEmpty.classList.remove('hidden');
+      qualityContent.classList.add('hidden');
+      return;
+    }
+    qualityEmpty.classList.add('hidden');
+    qualityContent.classList.remove('hidden');
+
+    const offlineIntervals = computeOfflineIntervals(bucket);
+    const offlineCount = bucket.statusEvents.filter(e => e.value === 'offline').length;
+    const offlineTotalSec = offlineIntervals.reduce((s, o) => s + (o.end - o.start) / 1000, 0);
+    qualityOfflineCountBadge.textContent = `offline回数: ${offlineCount.toLocaleString()}`;
+    qualityOfflineTotalBadge.textContent = `offline累計時間: ${formatDurationSec(offlineTotalSec)}`;
+    qualityErrorTotalBadge.textContent = `error総数: ${bucket.errorEvents.length.toLocaleString()}`;
+    qualityErrorUnparsableBadge.textContent = `うち解析不能: ${bucket.errorUnparsableCount.toLocaleString()}`;
+
+    renderStatusStepChart(bucket);
+    renderErrorBarChart(bucket);
+  }
+
+  function renderStatusStepChart(bucket) {
+    const events = bucket.statusEvents.slice().sort((a, b) => a.t - b.t);
+    if (!events.length) {
+      statusEmpty.classList.remove('hidden');
+      statusChart.classList.add('hidden');
+      return;
+    }
+    statusEmpty.classList.add('hidden');
+    statusChart.classList.remove('hidden');
+
+    const xs = events.map(e => e.t);
+    const ys = events.map(e => e.value === 'online' ? 1 : 0);
+    const trace = { x: xs, y: ys, type: 'scatter', mode: 'lines+markers', line: { shape: 'hv', color: '#2e7d32' }, marker: { size: 4 } };
+    const layout = {
+      margin: { l: 60, r: 20, t: 10, b: 40 },
+      xaxis: rangeAxisConfig('時刻'),
+      yaxis: { tickvals: [0, 1], ticktext: ['offline', 'online'], range: [-0.2, 1.2] }
+    };
+    Plotly.react(statusChart, [trace], layout, { responsive: true });
+    bindRelayout(statusChart);
+  }
+
+  function renderErrorBarChart(bucket) {
+    if (!bucket.errorEvents.length) {
+      errorEmpty.classList.remove('hidden');
+      errorChart.classList.add('hidden');
+      return;
+    }
+    errorEmpty.classList.add('hidden');
+    errorChart.classList.remove('hidden');
+
+    // パース失敗行(sample復元不可)もingest_tは常に取れているため件数に含める(§1.4-1)
+    const buckets = {};
+    for (const e of bucket.errorEvents) {
+      const hourStart = Math.floor(e.t.getTime() / 3600000) * 3600000;
+      buckets[hourStart] = (buckets[hourStart] || 0) + 1;
+    }
+    const keys = Object.keys(buckets).map(Number).sort((a, b) => a - b);
+    const xs = keys.map(k => new Date(k));
+    const ys = keys.map(k => buckets[k]);
+    const trace = { x: xs, y: ys, type: 'bar', marker: { color: '#b3261e' } };
+    const layout = { margin: { l: 50, r: 20, t: 10, b: 40 }, xaxis: rangeAxisConfig('時刻(1時間バケット)'), yaxis: { title: 'error件数' } };
+    Plotly.react(errorChart, [trace], layout, { responsive: true });
+    bindRelayout(errorChart);
+  }
+
+  // =========================================================
+  // 17. 描画: イベントログ(全機械共通)
+  // =========================================================
+  const eventLogEmpty = document.getElementById('eventLogEmpty');
+  const eventLogBody = document.getElementById('eventLogBody');
+
+  function kindLabel(kind) {
+    return kind === 'data' ? 'データ' : kind === 'status' ? 'ステータス' : kind === 'error' ? 'エラー(ノイズ)' : kind;
+  }
+
+  function renderEventLog(bucket) {
+    if (!bucket || !bucket.eventLog.length) {
+      eventLogEmpty.classList.remove('hidden');
+      eventLogBody.innerHTML = '';
+      return;
+    }
+    eventLogEmpty.classList.add('hidden');
+    const recent = bucket.eventLog.slice(-100).slice().reverse();
+    let html = '';
+    for (const e of recent) {
+      html += `<tr><td>${escapeHtml(formatDate(e.t))}</td><td>${escapeHtml(kindLabel(e.kind))}</td><td>${escapeHtml(e.text)}</td></tr>`;
+    }
+    eventLogBody.innerHTML = html;
+  }
+
+  // =========================================================
+  // 18. 全体再描画(単一の入口。選択中の1機械のみを描画する=FR-2)
+  // =========================================================
+  function renderAllPanels() {
+    renderMachineSelector();
+    const bucket = currentMachine ? machines[currentMachine] : null;
+    const cycleCapable = !!currentMachine && CYCLE_CAPABLE_MACHINES.indexOf(currentMachine) !== -1;
+
+    if (!bucket) {
+      setCycleGateState('loading');
+      clearStatCards();
+      clearCycleTable();
+    } else if (!cycleCapable) {
+      setCycleGateState('unsupported');
+      clearStatCards();
+      clearCycleTable();
+    } else {
+      setCycleGateState('ready');
+
+      // 推移グラフ・ガントは常に全件(閾値フィルタのみ、時間範囲は視覚クロップのみ)を描画する。
+      const scatterFiltered = applyThreshold(bucket.cycles);
+      const scatterStats = computeCycleStats(scatterFiltered.included);
+      renderCycleScatter(scatterFiltered.included, scatterStats.median);
+      renderGantt(bucket);
+
+      // 統計・ヒストグラム・一覧は「表示期間」×「閾値フィルタ」の両方を反映する
+      // (html/ampere/realtime.html の統計期間選択と同じ考え方)。
+      const rangeScoped = filterByCurrentRange(bucket.cycles);
+      const rangeAndThreshold = applyThreshold(rangeScoped);
+      const stats = computeCycleStats(rangeAndThreshold.included);
+      const driftStats = computeDriftStats(filterDriftsByCurrentRange(bucket.deviceDrifts));
+      renderStatsPanel(bucket, rangeAndThreshold, stats, driftStats);
+      renderCycleTable(bucket);
+    }
+
+    renderQualityPanel(bucket);
+    renderEventLog(bucket);
+  }
+
+  // =========================================================
+  // 19. 起動
+  // =========================================================
+  renderAllPanels();
+  poll();
+
+})();
+</script>
+
+</body>
+</html>

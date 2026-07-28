@@ -8,4 +8,5 @@ services:
       - ./html:/usr/share/nginx/html:ro
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - /opt/machine-tool-info-osaka:/usr/share/nginx/html/ampere/data:ro   # 収集サーバーの書き込み先を read-only 配信
+      - /opt/machine-tool-info-yao:/usr/share/nginx/html/rs232/yao/data:ro   # 八尾拠点のRS-232Cイベント収集先を read-only 配信
     restart: unless-stopped
