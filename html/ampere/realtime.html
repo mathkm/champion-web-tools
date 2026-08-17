@@ -272,13 +272,18 @@
   const INTEGRAL_GAP_THRESHOLD_MS = 60 * 1000; // 60秒を超えるdtは積算から除外
 
   const DAY_MS = 24 * 3600 * 1000;
-  const INITIAL_WINDOW_DAYS = 14;   // 最終的に揃える遡り日数(段階読込の到達目標)
+  const INITIAL_WINDOW_DAYS = 7;    // 自動で揃える遡り日数(段階読込の到達目標)。これより前はユーザー操作で取得
   const FIRST_CHUNK_DAYS = 1;       // 起動時にまず読む日数(第1段。ここまで読めたら即描画)
   const BACKFILL_STEP_DAYS = 2;     // 段階読込で1ポーリングごとに遡る日数
 
   // 読むのは jsonl のみ。同一データが .csv にも二重記録されているため csv は読まない
   // (両方読むと点数・通信量が2倍になる)。
-  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})\.jsonl$/i;
+  //
+  // 収集側のファイル名は 20260709_155949_555.jsonl (3フィールド) と
+  // 20260817_110000_767_001.jsonl (4フィールド, 2026-07-27 19:00〜) の2種類が混在する。
+  // 4フィールド目以降をオプション扱いにしないと parseFileStartTime が null を返し、
+  // selectFilesInWindow の「命名規則外は取り込む」フォールバックで全件取得になる。
+  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})((?:_\d+)*)\.jsonl$/i;
 
   // sensor_type="1"（電流）のみ対象。sensor_no → 表示チャンネル。要確認(前提B/C)。
   const CURRENT_SENSOR_TYPE = "1";
@@ -301,9 +306,10 @@
   let polling = false;  // 多重実行防止
 
   // 読込下限。段階読込で過去方向へ広がり、最終的に targetWindowStartMs に到達する。
-  let targetWindowStartMs = Date.now() - INITIAL_WINDOW_DAYS * DAY_MS;  // 到達目標(=14日前)
+  let targetWindowStartMs = Date.now() - INITIAL_WINDOW_DAYS * DAY_MS;  // 自動読込の到達目標(=7日前)
   let loadWindowStartMs   = Date.now() - FIRST_CHUNK_DAYS * DAY_MS;     // 現時点で読み込み済みの下限
   let backfillPending = false;   // ポーリング実行中に遡り要求が来た場合の持ち越し
+  let lastUnparsedCount = -1;    // 命名規則外ファイルの検知(件数が変わったときだけ警告する)
 
   // ---- DOM参照 ----
   const statusText = document.getElementById('statusText');
@@ -381,12 +387,23 @@
     return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s || 0));
   }
 
-  // ファイル名 (YYYYMMDD_HHMMSS_mmm.csv) からその先頭行の受信日時と一致する開始時刻を得る
-  function parseFileStartTime(name) {
+  // ファイル名を {t:開始時刻, base:時刻部分, depth:余分なフィールド数} に分解する。
+  // base が同じファイル(例 ..._767.jsonl と ..._767_001.jsonl)は同一ストリームの二重記録。
+  function parseFileName(name) {
     const m = FILENAME_TS_RE.exec(name);
     if (!m) return null;
-    const [, y, mo, d, h, mi, s, ms] = m;
-    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s), Number(ms));
+    const [, y, mo, d, h, mi, s, ms, extra] = m;
+    return {
+      t: new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s), Number(ms)),
+      base: `${y}${mo}${d}_${h}${mi}${s}_${ms}`,
+      depth: extra ? extra.split('_').length - 1 : 0
+    };
+  }
+
+  // ファイル名からその先頭行の受信日時と一致する開始時刻を得る
+  function parseFileStartTime(name) {
+    const info = parseFileName(name);
+    return info ? info.t : null;
   }
 
   // =========================================================
@@ -481,6 +498,23 @@
     return Number.isNaN(t) ? null : t;
   }
 
+  // 同一 base 時刻のファイルが複数あれば1つだけ残す。フィールド数が少ない方(=plain)を優先。
+  // plain が無い base では _NNN 付きが採用されるので、将来 plain が廃止されても取りこぼさない。
+  // 命名規則外のファイルはそのまま通し、既存の mtime フォールバックに判断を委ねる。
+  function dedupeByBase(files) {
+    const best = new Map();
+    const unparsed = [];
+    for (const f of files) {
+      const info = parseFileName(f.name);
+      if (!info) { unparsed.push(f); continue; }
+      const cur = best.get(info.base);
+      if (!cur || info.depth < cur.depth) best.set(info.base, { file: f, depth: info.depth });
+    }
+    const out = unparsed;
+    for (const v of best.values()) out.push(v.file);
+    return out;
+  }
+
   // 各ファイルの守備範囲を [自身の開始時刻, 次ファイルの開始時刻) とみなし、
   // windowStartMs 以降のデータを含みうるファイルだけを返す。
   // 入力は名前昇順にソート済みの配列であること。
@@ -542,8 +576,20 @@
     let failed = false;
     try {
       const files = await fetchListing();
-      files.sort((a, b) => NAME_COLLATOR.compare(a.name, b.name)); // 古い順に取り込む
-      const targets = selectFilesInWindow(files, loadWindowStartMs);
+
+      // 命名規則外が出たら知らせる(過去に収集側の改名で全件取得に戻ったことがあるため)
+      const unparsedCount = files.filter(f => !parseFileName(f.name)).length;
+      if (unparsedCount !== lastUnparsedCount) {
+        lastUnparsedCount = unparsedCount;
+        if (unparsedCount > 0) {
+          console.warn('[poll] ファイル名を解釈できないファイルが ' + unparsedCount +
+            ' 件あります。収集側の命名規則が変わった可能性があります(全件取得の原因になります)。');
+        }
+      }
+
+      const deduped = dedupeByBase(files);
+      deduped.sort((a, b) => NAME_COLLATOR.compare(a.name, b.name)); // 古い順に取り込む
+      const targets = selectFilesInWindow(deduped, loadWindowStartMs);
       let added = 0;
       for (const f of targets) {
         const seen = fileState[f.name] ? fileState[f.name].offset : 0;
@@ -565,9 +611,13 @@
       setStatus('error', e);
     } finally {
       polling = false;
-      if (backfillPending) { backfillPending = false; poll(); }
-      else if (!failed && expandWindowIfNeeded()) { poll(); }  // 段階読込の次段へ
-      else scheduleNext();
+      if (backfillPending) { backfillPending = false; poll(); }   // ユーザー起点の遡りは即時
+      else {
+        // 段階読込は下限を広げるだけにして、取得は次回のポーリングに任せる。
+        // ここで即座に poll() を連鎖させると全段が一気に走りきり、初期取得量が絞れない。
+        if (!failed) expandWindowIfNeeded();
+        scheduleNext();
+      }
     }
   }
 
@@ -576,8 +626,9 @@
     pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
   }
 
-  // 段階読込: 目標(14日前)にまだ達していなければ、下限を BACKFILL_STEP_DAYS 分だけ過去へ広げる。
-  // 広げたら true を返す(呼び出し側が即座に次の poll を回す)。
+  // 段階読込: 目標(INITIAL_WINDOW_DAYS 前)にまだ達していなければ、
+  // 下限を BACKFILL_STEP_DAYS 分だけ過去へ広げる。広げたら true を返す。
+  // 実際の取得は次回のポーリングで行うので、ここでは poll() を呼ばない。
   function expandWindowIfNeeded() {
     if (loadWindowStartMs <= targetWindowStartMs) return false;
     loadWindowStartMs = Math.max(targetWindowStartMs, loadWindowStartMs - BACKFILL_STEP_DAYS * DAY_MS);
@@ -911,12 +962,13 @@
     const hoursMap = { '1h': 1, '6h': 6, '24h': 24, '7d': 168, '14d': 336 };
     const hours = hoursMap[preset];
     if (!hours) return;
-    const dataStart = dataStartT();
     const dataEnd = dataEndT();
-    let start = new Date(dataEnd.getTime() - hours * 3600000);
-    if (start.getTime() < dataStart.getTime()) start = dataStart;
+    const start = new Date(dataEnd.getTime() - hours * 3600000);
     userPinnedRange = true;
     setRange(start, dataEnd, 'preset');
+    // 読込済み範囲より過去を要求されたら取りに行く(既にカバー済みならno-op)。
+    // 到着までグラフ左側は空くが、遡り取得の完了に従って埋まる。
+    requestBackfill(start);
   });
 
   // =========================================================
