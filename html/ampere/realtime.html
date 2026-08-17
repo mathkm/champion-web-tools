@@ -230,6 +230,8 @@
           <button type="button" data-preset="1h">直近1時間</button>
           <button type="button" data-preset="6h">直近6時間</button>
           <button type="button" data-preset="24h">直近24時間</button>
+          <button type="button" data-preset="7d">直近7日</button>
+          <button type="button" data-preset="14d">直近14日</button>
         </span>
       </div>
       <div id="statsRange"></div>
@@ -269,8 +271,14 @@
   const MAX_POINTS = 150000;
   const INTEGRAL_GAP_THRESHOLD_MS = 60 * 1000; // 60秒を超えるdtは積算から除外
 
-  const INITIAL_WINDOW_DAYS = 7;                 // 初期読込ウィンドウ(現在日時からの遡り日数)
-  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})\.(?:csv|jsonl)$/i;
+  const DAY_MS = 24 * 3600 * 1000;
+  const INITIAL_WINDOW_DAYS = 14;   // 最終的に揃える遡り日数(段階読込の到達目標)
+  const FIRST_CHUNK_DAYS = 1;       // 起動時にまず読む日数(第1段。ここまで読めたら即描画)
+  const BACKFILL_STEP_DAYS = 2;     // 段階読込で1ポーリングごとに遡る日数
+
+  // 読むのは jsonl のみ。同一データが .csv にも二重記録されているため csv は読まない
+  // (両方読むと点数・通信量が2倍になる)。
+  const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3})\.jsonl$/i;
 
   // sensor_type="1"（電流）のみ対象。sensor_no → 表示チャンネル。要確認(前提B/C)。
   const CURRENT_SENSOR_TYPE = "1";
@@ -292,8 +300,9 @@
   let pollTimer = null;
   let polling = false;  // 多重実行防止
 
-  // これより新しいデータのみ読み込む下限。過去日を指定されたら過去方向へ広げる(縮めない)。
-  let loadWindowStartMs = Date.now() - INITIAL_WINDOW_DAYS * 24 * 3600 * 1000;
+  // 読込下限。段階読込で過去方向へ広がり、最終的に targetWindowStartMs に到達する。
+  let targetWindowStartMs = Date.now() - INITIAL_WINDOW_DAYS * DAY_MS;  // 到達目標(=14日前)
+  let loadWindowStartMs   = Date.now() - FIRST_CHUNK_DAYS * DAY_MS;     // 現時点で読み込み済みの下限
   let backfillPending = false;   // ポーリング実行中に遡り要求が来た場合の持ち越し
 
   // ---- DOM参照 ----
@@ -319,6 +328,10 @@
   // 現在チャートに適用中の表示範囲（renderChart が Plotly.react の layout に焼き込むため保持する）
   let currentRangeStart = null;
   let currentRangeEnd = null;
+
+  // ユーザーが表示範囲を明示操作したか。false の間は「読込済み全期間」に自動追随する
+  // (段階読込で過去方向にデータが伸びる分をグラフへ反映するため)。
+  let userPinnedRange = false;
 
   const chartEmpty = document.getElementById('chartEmpty');
   const chartDiv = document.getElementById('chart');
@@ -458,7 +471,14 @@
     const res = await fetch(DATA_BASE + '?_=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('listing HTTP ' + res.status);
     const arr = await res.json();
-    return arr.filter(e => e.type === 'file' && /\.(csv|jsonl)$/i.test(e.name));
+    return arr.filter(e => e.type === 'file' && /\.jsonl$/i.test(e.name));
+  }
+
+  // autoindex JSON の mtime("Mon, 17 Aug 2026 01:02:03 GMT") を ms に。取れなければ null。
+  function fileMtimeMs(entry) {
+    if (!entry || !entry.mtime) return null;
+    const t = Date.parse(entry.mtime);
+    return Number.isNaN(t) ? null : t;
   }
 
   // 各ファイルの守備範囲を [自身の開始時刻, 次ファイルの開始時刻) とみなし、
@@ -468,7 +488,14 @@
     const out = [];
     for (let i = 0; i < sortedFiles.length; i++) {
       const start = parseFileStartTime(sortedFiles[i].name);
-      if (!start) { out.push(sortedFiles[i]); continue; }  // 命名規則外は判定不能。取りこぼさぬよう取り込む
+      if (!start) {
+        // 命名規則外。最終更新がウィンドウ以前なら中身も全部古いので確実に落とせる。
+        // mtime も取れない場合だけ、取りこぼしを避けて取り込む。
+        const mt = fileMtimeMs(sortedFiles[i]);
+        if (mt !== null && mt < windowStartMs) continue;
+        out.push(sortedFiles[i]);
+        continue;
+      }
       const next = i + 1 < sortedFiles.length ? parseFileStartTime(sortedFiles[i + 1].name) : null;
       const coverEndMs = next ? next.getTime() : Infinity; // 最新ファイルは現在まで伸びている
       if (coverEndMs > windowStartMs) out.push(sortedFiles[i]);
@@ -512,6 +539,7 @@
   async function poll() {
     if (polling) return;
     polling = true;
+    let failed = false;
     try {
       const files = await fetchListing();
       files.sort((a, b) => NAME_COLLATOR.compare(a.name, b.name)); // 古い順に取り込む
@@ -533,10 +561,12 @@
       renderFileInfoLive();
       setStatus('ok');
     } catch (e) {
+      failed = true;
       setStatus('error', e);
     } finally {
       polling = false;
       if (backfillPending) { backfillPending = false; poll(); }
+      else if (!failed && expandWindowIfNeeded()) { poll(); }  // 段階読込の次段へ
       else scheduleNext();
     }
   }
@@ -546,9 +576,19 @@
     pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
   }
 
+  // 段階読込: 目標(14日前)にまだ達していなければ、下限を BACKFILL_STEP_DAYS 分だけ過去へ広げる。
+  // 広げたら true を返す(呼び出し側が即座に次の poll を回す)。
+  function expandWindowIfNeeded() {
+    if (loadWindowStartMs <= targetWindowStartMs) return false;
+    loadWindowStartMs = Math.max(targetWindowStartMs, loadWindowStartMs - BACKFILL_STEP_DAYS * DAY_MS);
+    setStatus('loading');
+    return true;
+  }
+
   function requestBackfill(start) {
     if (!start || start.getTime() >= loadWindowStartMs) return; // 既にカバー済み
     loadWindowStartMs = start.getTime();
+    if (start.getTime() < targetWindowStartMs) targetWindowStartMs = start.getTime();
     if (polling) { backfillPending = true; return; }  // 実行中のポーリング完了後に回す
     setStatus('loading');
     poll();
@@ -556,7 +596,13 @@
 
   function setStatus(kind, err) {
     statusText.classList.remove('ok', 'error');
-    if (kind === 'loading') { statusText.textContent = '過去データ読込中…'; return; }
+    if (kind === 'loading') {
+      const daysLeft = Math.max(0, Math.ceil((loadWindowStartMs - targetWindowStartMs) / DAY_MS));
+      statusText.textContent = daysLeft > 0
+        ? `過去データ読込中… (あと約${daysLeft}日分)`
+        : '過去データ読込中…';
+      return;
+    }
     if (kind === 'ok') {
       statusText.classList.add('ok');
       statusText.textContent = '接続OK';
@@ -821,6 +867,7 @@
 
     // 全期間に戻された場合(ダブルクリックによるautorangeリセットなど)
     if (eventData['xaxis.autorange'] === true || eventData['autosize']) {
+      userPinnedRange = false;
       setRange(null, null, 'plot');
       return;
     }
@@ -833,6 +880,7 @@
     const end = new Date(x1);
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
 
+    userPinnedRange = true;
     setRange(start, end, 'plot');
   }
 
@@ -844,6 +892,7 @@
     if (!start) start = dataStartT();
     if (!end) end = dataEndT();
     if (start.getTime() > end.getTime()) return; // 不正な範囲は無視
+    userPinnedRange = true;
     setRange(start, end, 'input');
     requestBackfill(start);
   }
@@ -855,16 +904,18 @@
     if (!btn || !hasData()) return;
     const preset = btn.dataset.preset;
     if (preset === 'all') {
+      userPinnedRange = false;
       setRange(null, null, 'preset');
       return;
     }
-    const hoursMap = { '1h': 1, '6h': 6, '24h': 24 };
+    const hoursMap = { '1h': 1, '6h': 6, '24h': 24, '7d': 168, '14d': 336 };
     const hours = hoursMap[preset];
     if (!hours) return;
     const dataStart = dataStartT();
     const dataEnd = dataEndT();
     let start = new Date(dataEnd.getTime() - hours * 3600000);
     if (start.getTime() < dataStart.getTime()) start = dataStart;
+    userPinnedRange = true;
     setRange(start, dataEnd, 'preset');
   });
 
@@ -880,14 +931,15 @@
   }
 
   function refreshView() {
-    const s = fromLocalInputValue(rangeStartInput.value);
-    if (liveFollow) {
+    if (!userPinnedRange) {
+      // 未操作: 読込済み全期間へ追随。段階読込でx軸の左端が順次伸びる。
+      setRange(null, null, 'live');
+    } else if (liveFollow) {
       // FROMは保持し、最新を含む期間へ追従
-      setRange(s, null, 'live');
+      setRange(fromLocalInputValue(rangeStartInput.value), null, 'live');
     } else {
       // ユーザーが選択中の期間を維持（入力欄の値を再適用）
-      const e = fromLocalInputValue(rangeEndInput.value);
-      setRange(s, e, 'live');
+      setRange(fromLocalInputValue(rangeStartInput.value), fromLocalInputValue(rangeEndInput.value), 'live');
     }
     renderChart();
   }
